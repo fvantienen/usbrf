@@ -278,7 +278,7 @@ int main(void)
 		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO10);
 
 	/* Setup the USB driver. */
-	usbd_dev = usbd_init(&stm32f103_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, cdcacm_set_config);
 
 	/* Setup GPIOA Pin 8 to pull up the D+ high. To let the host know that we are here and ready to talk.

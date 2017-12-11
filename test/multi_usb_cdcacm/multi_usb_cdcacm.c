@@ -35,10 +35,12 @@ void our_relay_process(void)
 	 */
 	while ((!RING_EMPTY(&cdcacm_data_rx)) && (!RING_FULL(&cdcacm_console_tx))) {
 		ring_read_ch(&cdcacm_data_rx, &buffer);
+		LED_TOGGLE(1);
 		ring_write_ch(&cdcacm_console_tx, buffer);
 	}
 	while ((!RING_EMPTY(&cdcacm_console_rx)) && (!RING_FULL(&cdcacm_data_tx))) {
 		ring_read_ch(&cdcacm_console_rx, &buffer);
+		LED_TOGGLE(2);
 		ring_write_ch(&cdcacm_data_tx, buffer);
 	}
 }

@@ -27,7 +27,7 @@
 #include <libopencm3/usb/dfu.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/exti.h>
-#include <libopencm3/stm32/usb.h>
+#include <libopencm3/stm32/st_usbfs.h>
 
 #include "cdcacm.h"
 #include "ring.h"
@@ -382,7 +382,7 @@ void cdcacm_init(void) {
 	cdcacm_status.console_rx_ring_full = 0;
 
 	/* Initialize the USB stack. */
-	cdcacm_usbd_dev = usbd_init(&stm32f103_usb_driver, &dev, &config, usb_strings, 6,
+	cdcacm_usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev, &config, usb_strings, 6,
 			    cdcacm_usbd_control_buffer, sizeof(cdcacm_usbd_control_buffer));
 
 	usbd_register_set_config_callback(cdcacm_usbd_dev, cdcacm_set_config_callback);

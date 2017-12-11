@@ -18,6 +18,7 @@
 ##
 
 BINARY = get_mfgid
+PROJECT_TLD = ../..
 
 SEMIHOSTING=1
 

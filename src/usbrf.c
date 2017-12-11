@@ -36,7 +36,7 @@ int main(void) {
 
 	// Initialize the modules
 	config_init();
-	led_init();
+	led_init();	
 	timer_init();
 	cdcacm_init();
 	button_init();

@@ -92,9 +92,9 @@ void cyrf_init(void) {
 
 	/* Reset the CYRF chip */
 	gpio_set(CYRF_DEV_RST_PORT, CYRF_DEV_RST_PIN);
-	counter_wait_poll(counter_get_ticks_of_us(300));
+	counter_wait_poll(counter_get_ticks_of_ms(300));
 	gpio_clear(CYRF_DEV_RST_PORT, CYRF_DEV_RST_PIN);
-	counter_wait_poll(counter_get_ticks_of_us(300));
+	counter_wait_poll(counter_get_ticks_of_ms(300));
 
 	/* Also a software reset */
 	cyrf_write_register(CYRF_MODE_OVERRIDE, CYRF_RST);
