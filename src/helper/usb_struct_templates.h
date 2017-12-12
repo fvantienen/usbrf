@@ -44,7 +44,7 @@ static const struct usb_device_descriptor DEV_NAME = {						\
 	.iProduct = 2,															\
 	.iSerialNumber = 3,														\
 	.bNumConfigurations = 1,												\
-};
+}
 
 
 /***************************************************************
@@ -61,7 +61,7 @@ static const struct usb_endpoint_descriptor EP_NAME[] = {{					\
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,							\
 	.wMaxPacketSize = 16,													\
 	.bInterval = 255,														\
-}};
+}}
 
 #define USB_CDCACM_DATA_EP_DESCRIPTOR(EP_NAME, EP_RX_ADDRESS, EP_TX_ADDRESS) \
 static const struct usb_endpoint_descriptor EP_NAME[] = {{					\
@@ -78,7 +78,7 @@ static const struct usb_endpoint_descriptor EP_NAME[] = {{					\
 	.bmAttributes = USB_ENDPOINT_ATTR_BULK,									\
 	.wMaxPacketSize = 64,													\
 	.bInterval = 1,															\
-}};
+}}
 
 #define USB_CDCACM_FUNCTIONAL_DESCRIPTORS(NAME, DATA_IFACE, CTRL_IFACE, CTRL_SUB_IFACE)	\
 static const struct {														\
@@ -114,7 +114,7 @@ static const struct {														\
 		.bControlInterface = (CTRL_IFACE),									\
 		.bSubordinateInterface0 = (CTRL_SUB_IFACE),							\
 	 }																		\
-};
+}
 
 #define USB_CDCACM_COMMAND_INTERFACE(NAME, IFACE_NR, IFACE, COMM_EP_NAME, FUNC_DESC_NAME)	\
 static const struct usb_interface_descriptor NAME[] = {{					\
@@ -132,7 +132,7 @@ static const struct usb_interface_descriptor NAME[] = {{					\
 																			\
 	.extra = &FUNC_DESC_NAME,												\
 	.extralen = sizeof(FUNC_DESC_NAME)										\
-}};
+}}
 
 #define USB_CDCACM_DATA_INTERFACE(NAME, IFACE_NR, DATA_EP_NAME)				\
 static const struct usb_interface_descriptor NAME[] = {{					\
@@ -147,7 +147,7 @@ static const struct usb_interface_descriptor NAME[] = {{					\
 	.iInterface = 0,														\
 																			\
 	.endpoint = DATA_EP_NAME,												\
-}};
+}}
 
 #define USB_CDCACM_ASSOCIATION_DESCRIPTOR(NAME, FIRST_IFACE)				\
 static const struct usb_iface_assoc_descriptor NAME = {						\
@@ -159,6 +159,6 @@ static const struct usb_iface_assoc_descriptor NAME = {						\
 	.bFunctionSubClass = USB_CDC_SUBCLASS_ACM,								\
 	.bFunctionProtocol = USB_CDC_PROTOCOL_AT,								\
 	.iFunction = 0,															\
-};
+}
 
 #endif /* MODULES_USB_STRUCT_TEMPLATES_H_ */

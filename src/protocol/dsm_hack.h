@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2013 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2015 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,41 +17,15 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <libopencm3/stm32/rcc.h>
+#ifndef DSM_HACK_H_
+#define DSM_HACK_H_
 
-/* Load the modules */
-#include "modules/config.h"
-#include "modules/led.h"
-#include "modules/button.h"
-#include "modules/timer.h"
-#include "modules/cdcacm.h"
-#include "modules/counter.h"
-#include "modules/cyrf6936.h"
-#include "modules/console.h"
 #include "modules/protocol.h"
 
+extern struct protocol_t protocol_dsm_hack;
+void protocol_dsm_hack_start(void);
+void protocol_dsm_hack_stop(void);
+void protocol_dsm_hack_run(void);
+void protocol_dsm_hack_status(void);
 
-int main(void) {
-	// Setup the clock
-	rcc_clock_setup_in_hse_12mhz_out_72mhz();
-
-	// Initialize the modules
-	config_init();
-	led_init();	
-	timer_init();
-	cdcacm_init();
-	button_init();
-	counter_init();
-	cyrf_init();
-	console_init();
-	protocol_init();
-
-	/* The main loop */
-	while (1) {
-		cdcacm_process();
-		console_run();
-		protocol_run();
-	}
-
-	return 0;
-}
+#endif /* DSM_HACK_H_ */

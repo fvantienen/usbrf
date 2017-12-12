@@ -30,9 +30,10 @@
 char console_buf[CONSOLE_SIZE];
 uint16_t console_idx = 0;
 
+#define NAME_SIZE 16
 typedef struct {
-    char *name;
-    char *params;
+    char name[NAME_SIZE];
+    char params[NAME_SIZE];
     void (*cmdFunc)(char *cmdLine);
 } console_cmd_t;
 
@@ -40,7 +41,7 @@ static int console_cmd_cmp(const void *c1, const void *c2);
 static console_cmd_t *console_get_cmd(char *name);
 static void console_print_help(char *cmdLine);
 
-#define CONSOLE_CMDS_SIZE 50
+#define CONSOLE_CMDS_SIZE 32
 static console_cmd_t console_cmds[CONSOLE_CMDS_SIZE];
 static int console_cmds_idx = 0;
 
@@ -109,10 +110,10 @@ void console_cmd_add(char *name, char *params, void (*cmdFunc)(char *cmdLine)) {
   if(console_cmds_idx >= CONSOLE_CMDS_SIZE)
     return;
 
-  console_cmds[console_cmds_idx].name = name;
-  console_cmds[console_cmds_idx].params = params;
+  strncpy(console_cmds[console_cmds_idx].name, name, NAME_SIZE);
+  strncpy(console_cmds[console_cmds_idx].params, params, NAME_SIZE);
   console_cmds[console_cmds_idx++].cmdFunc = cmdFunc;
-  qsort(&console_cmds, console_cmds_idx, sizeof console_cmds[0], console_cmd_cmp);
+  qsort(console_cmds, console_cmds_idx, sizeof console_cmds[0], console_cmd_cmp);
 }
 
 /**
@@ -121,8 +122,8 @@ void console_cmd_add(char *name, char *params, void (*cmdFunc)(char *cmdLine)) {
 void console_cmd_rm(char *name) {
   console_cmd_t* cmd = console_get_cmd(name);
   if(cmd) {
-    cmd->name = NULL;
-    qsort(&console_cmds, console_cmds_idx, sizeof console_cmds[0], console_cmd_cmp);
+    strncpy(cmd->name, "", NAME_SIZE);
+    qsort(console_cmds, console_cmds_idx, sizeof console_cmds[0], console_cmd_cmp);
     console_cmds_idx--;
   }
 }
@@ -145,19 +146,15 @@ void console_print(const char *format, ...) {
  */
 static int console_cmd_cmp(const void *c1, const void *c2) {
   const console_cmd_t *cmd1 = c1, *cmd2 = c2;
-  if(cmd1->name == NULL)
-    return INT32_MAX;
-  else if(cmd2->name == NULL)
-    return INT32_MIN;
-  else
-    return strncasecmp(cmd1->name, cmd2->name, strlen(cmd2->name));
+  return strncasecmp(cmd1->name, cmd2->name, strlen(cmd2->name));
 }
 
 /**
  * Get a console command by name
  */
 static console_cmd_t *console_get_cmd(char *name) {
-  console_cmd_t target = {name, NULL, NULL};
+  console_cmd_t target = {"", "", NULL};
+  strncpy(target.name, name, NAME_SIZE);
   return bsearch(&target, console_cmds, console_cmds_idx, sizeof console_cmds[0], console_cmd_cmp);
 }
 

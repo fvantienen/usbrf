@@ -20,8 +20,8 @@
 #ifndef PROTOCOL_DSM_H_
 #define PROTOCOL_DSM_H_
 
-#include "../modules/config.h"
-//#include <libopencm3/cm3/common.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 /* All times are in microseconds divided by 10 */
 #define DSM_BIND_RECV_TIME			1000		/**< Time before timeout when receiving bind packets */
@@ -61,16 +61,13 @@ enum dsm_resolution {
 /* External variables used in DSM2 and DSMX */
 extern const uint8_t pn_codes[5][9][8];			/**< The pn_codes for the DSM2/DSMX protocol */
 extern const uint8_t pn_bind[];					/**< The pn_code used during binding */
-extern const uint8_t cyrf_config[][2];			/**< The CYRF DSM configuration during boot */
-extern const uint8_t cyrf_bind_config[][2];		/**< The CYRF DSM binding configuration */
-extern const uint8_t cyrf_transfer_config[][2];	/**< The CYRF DSM transfer configuration */
 
 /* External functions */
-uint16_t dsm_config_size(void);
-uint16_t dsm_bind_config_size(void);
-uint16_t dsm_transfer_config_size(void);
+void dsm_set_config(void);
+void dsm_set_config_bind(void);
+void dsm_set_config_transfer(void);
 void dsm_generate_channels_dsmx(uint8_t mfg_id[], uint8_t *channels);
 void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
-void dsm_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool is_11bit, int16_t* channels)
+void dsm_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool is_11bit, int16_t* channels);
 
 #endif /* PROTOCOL_DSM_H_ */

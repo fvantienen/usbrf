@@ -18,9 +18,8 @@
  */
 
 #include "dsm.h"
-//#include <libopencm3/cm3/common.h>
-//#include "../modules/config.h"
-#include "../modules/cyrf6936.h"
+#include "modules/cyrf6936.h"
+#include "modules/config.h"
 
 /* The PN codes */
 const uint8_t pn_codes[5][9][8] = {
@@ -78,13 +77,12 @@ const uint8_t pn_codes[5][9][8] = {
   /* Col 6 */ {0x58, 0xB5, 0xB3, 0xDD, 0x0E, 0x28, 0xF1, 0xB0},
   /* Col 7 */ {0x5F, 0x30, 0x3B, 0x56, 0x96, 0x45, 0xF4, 0xA1},
   /* Col 8 */ {0x03, 0xBC, 0x6E, 0x8A, 0xEF, 0xBD, 0xFE, 0xF8}
-},
-};
+}};
 const uint8_t pn_bind[] = { 0x98, 0x88, 0x1B, 0xE4, 0x30, 0x79, 0x03, 0x84 };
 
 /*The CYRF initial config, binding config and transfer config */
 const uint8_t cyrf_config[][2] = {
-		{CYRF_MODE_OVERRIDE, CYRF_RST},											// Reset the device
+	//	{CYRF_MODE_OVERRIDE, CYRF_RST},											// Reset the device
 		{CYRF_CLK_EN, CYRF_RXF},												// Enable the clock
 		{CYRF_AUTO_CAL_TIME, 0x3C},												// From manual, needed for initialization
 		{CYRF_AUTO_CAL_OFFSET, 0x14},											// From manual, needed for initialization
@@ -110,28 +108,28 @@ const uint8_t cyrf_transfer_config[][2] = {
 		{CYRF_RX_OVERRIDE, 0x00},												// Reset RX overrides
 };
 
-/**
- * Return the size of the config array
- * @return The size of the config array
+/** 
+ * Set the initialization config
  */
-uint16_t dsm_config_size(void) {
-	return sizeof(cyrf_config)/sizeof(cyrf_config[0]);
+void dsm_set_config(void) {
+	uint16_t size = sizeof(cyrf_config)/sizeof(cyrf_config[0]);
+	cyrf_set_config_len(cyrf_config, size);
 }
 
 /**
- * Return the size of the config array
- * @return The size of the config array
+ * Set the binding configuration
  */
-uint16_t dsm_bind_config_size(void) {
-	return sizeof(cyrf_bind_config)/sizeof(cyrf_bind_config[0]);
+void dsm_set_config_bind(void) {
+	uint16_t size = sizeof(cyrf_bind_config)/sizeof(cyrf_bind_config[0]);
+	cyrf_set_config_len(cyrf_bind_config, size);
 }
 
 /**
- * Return the size of the config array
- * @return The size of the config array
+ * Set the transfer configuration
  */
-uint16_t dsm_transfer_config_size(void) {
-	return sizeof(cyrf_transfer_config)/sizeof(cyrf_transfer_config[0]);
+void dsm_set_config_transfer(void) {
+	uint16_t size = sizeof(cyrf_transfer_config)/sizeof(cyrf_transfer_config[0]);
+	cyrf_set_config_len(cyrf_transfer_config, size);
 }
 
 /**

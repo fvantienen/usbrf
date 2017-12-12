@@ -207,7 +207,7 @@ enum {
 /* The external functions */
 void cyrf_init(void);
 
-typedef void (*cyrf_on_event) (const bool error);
+typedef void (*cyrf_on_event)(const bool error);
 void cyrf_register_recv_callback(cyrf_on_event callback);
 void cyrf_register_send_callback(cyrf_on_event callback);
 
