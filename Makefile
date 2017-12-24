@@ -42,28 +42,19 @@ main: lib
 	$(Q)$(MAKE) --directory=src
 
 lib:
-	$(Q)if [ ! "`ls -A libopencm3`" ] ; then \
-	echo "######## ERROR ########"; \
-	echo "\tlibopencm3 is not initialized."; \
-	echo "\tPlease run:"; \
-	echo "\t$$ git submodule init"; \
-	echo "\t$$ git submodule update"; \
-	echo "\tbefore running make."; \
-	echo "######## ERROR ########"; \
-	exit 1; \
-	fi
-	$(Q)$(MAKE) -C libopencm3 lib TARGETS="stm32/f1"
+	$(Q)$(MAKE) -C lib
 
 flash: main
 	$(Q)$(MAKE) -C src flash
 
 clean:
-	$(Q)$(MAKE) -C libopencm3 clean
+	@printf "  CLEAN   lib\n"
+	$(Q)$(MAKE) -C lib clean
 	@printf "  CLEAN   src\n"
 	$(Q)$(MAKE) -C src clean
 	$(Q)for i in $(TEST_TARGETS); do \
 		if [ -d $$i ]; then \
-			printf "  CLEAN   $$i\n"; \
+			printf "  CLEAN   test/$$i\n"; \
 			$(MAKE) -C $$i clean SRCLIBDIR=$(SRCLIBDIR) || exit $?; \
 		fi; \
 	done

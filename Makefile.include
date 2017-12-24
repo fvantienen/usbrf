@@ -25,7 +25,8 @@ endif
 
 # Set bootloader enabled and load script
 PROJECT_TLD ?= ..
-TOOLCHAIN_DIR = $(PROJECT_TLD)/libopencm3
+PROJECT_LIB = $(PROJECT_TLD)/lib
+TOOLCHAIN_DIR = $(PROJECT_LIB)/libopencm3
 LDSCRIPT = $(PROJECT_TLD)/stm32f103cbt6.ld
 LDFLAGS += -Wl,-Ttext=0x8002000
 CFLAGS += -I$(PROJECT_TLD)/src
@@ -37,7 +38,6 @@ OBJCOPY    = $(PREFIX)-objcopy
 OBJDUMP    = $(PREFIX)-objdump
 GDB        = $(PREFIX)-gdb
 
-TOOLCHAIN_DIR ?= ../../libopencm3
 ifeq ($(wildcard $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f1.a),)
 ifneq ($(strip $(shell which $(CC))),)
 TOOLCHAIN_DIR := $(shell dirname `which $(CC)`)/../$(PREFIX)
