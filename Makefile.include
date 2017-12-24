@@ -76,7 +76,7 @@ PPRZLINK_DIR    ?= $(PROJECT_LIB)/pprzlink/var
 PPRZLINK_SRC    = $(PPRZLINK_DIR)/share/pprzlink/src
 ifeq ($(PPRZLINK),1)
 OBJS            += $(PPRZLINK_SRC)/pprz_transport.o
-CFLAGS          += -I$(PPRZLINK_DIR)/include
+CFLAGS          += -DDOWNLINK -I$(PPRZLINK_DIR)/include
 endif
 
 ifneq ($(OPENCM3_DIR),)

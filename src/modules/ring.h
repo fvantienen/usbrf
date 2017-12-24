@@ -39,12 +39,13 @@ struct ring {
 #define RING_DATA(RING) (RING)->data
 #define RING_EMPTY(RING) ((RING)->begin == (RING)->end)
 #define RING_FULL(RING) ((((RING)->end + 1) % (RING)->size) == (RING)->begin)
+#define RING_FREE_SPACE(RING) (((RING)->begin - (RING)->end + (RING)->size - 1) % (RING)->size)
 
 void ring_init(struct ring *ring, uint8_t * buf, ring_size_t size);
-int32_t ring_write_ch(struct ring *ring, uint8_t ch);
-int32_t ring_write(struct ring *ring, uint8_t * data, ring_size_t size);
-int32_t ring_safe_write_ch(struct ring *ring, uint8_t ch);
-int32_t ring_safe_write(struct ring *ring, uint8_t * data, ring_size_t size);
+int32_t ring_write_ch(struct ring *ring, const uint8_t ch);
+int32_t ring_write(struct ring *ring, const uint8_t * data, ring_size_t size);
+int32_t ring_safe_write_ch(struct ring *ring, const uint8_t ch);
+int32_t ring_safe_write(struct ring *ring, const uint8_t * data, ring_size_t size);
 int32_t ring_read_ch(struct ring *ring, uint8_t * ch);
 int32_t ring_read(struct ring *ring, uint8_t * data, ring_size_t size);
 

@@ -404,7 +404,7 @@ void usb_lp_can_rx0_isr(void) {
  * Process the content of the output ring buffers and send the data out whenever
  * possible.
  */
-void cdcacm_process(void)
+void cdcacm_run(void)
 {
 	uint8_t buf[65];
 	int tx_len = 0;

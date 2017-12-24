@@ -28,6 +28,7 @@
 #include "modules/counter.h"
 #include "modules/cyrf6936.h"
 #include "modules/console.h"
+#include "modules/pprzlink.h"
 #include "modules/protocol.h"
 
 
@@ -44,11 +45,13 @@ int main(void) {
 	counter_init();
 	cyrf_init();
 	console_init();
+	pprzlink_init();
 	protocol_init();
 
 	/* The main loop */
 	while (1) {
-		cdcacm_process();
+		cdcacm_run();
+		pprzlink_run();
 		console_run();
 		protocol_run();
 	}

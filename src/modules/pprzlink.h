@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2013 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2017 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,21 +17,24 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MODULES_CDCACM_H_
-#define MODULES_CDCACM_H_
+#ifndef PPRZLINK_H_
+#define PPRZLINK_H_
 
-// Include the board specifications for the USB define
-#include "../board.h"
+#include "pprzlink/pprz_transport.h"
 
-extern struct ring cdcacm_data_tx;
-extern struct ring cdcacm_data_rx;
-extern struct ring cdcacm_console_tx;
-extern struct ring cdcacm_console_rx;
+/* Main paparazzi link variables */
+struct pprzlink_t {
+	struct link_device dev;		///< The communication device
+	struct pprz_transport tp;	///< The transport layer state
+	uint8_t recv_buf[256];		///< The receive message buffer
+	bool msg_received;				///< Whether a message is received or not
+	struct ring *r_rx;				///< The receive ring buffer
+	struct ring *r_tx;				///< The transmit ring buffer
+};
 
-typedef void (*cdcacm_receive_callback) (char *data, int size);
+/* Extern variables and functions */
+extern struct pprzlink_t pprzlink;
+void pprzlink_init(void);
+void pprzlink_run(void);
 
-void cdcacm_init(void);
-void cdcacm_register_receive_callback(cdcacm_receive_callback callback);
-void cdcacm_run(void);
-
-#endif /* MODULES_CDCACM_H_ */
+#endif /* PPRZLINK_H_ */

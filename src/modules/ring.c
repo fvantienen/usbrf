@@ -44,7 +44,7 @@ void ring_init(struct ring *ring, uint8_t * buf, ring_size_t size)
  * provided as a 32bit int value, on failure it returns a -1 value. A failure
  * means the buffer is full and no characters can be added at the moment.
  */
-int32_t ring_write_ch(struct ring *ring, uint8_t ch)
+int32_t ring_write_ch(struct ring *ring, const uint8_t ch)
 {
 	if (((ring->end + 1) % ring->size) != ring->begin) {
 		ring->data[ring->end++] = ch;
@@ -64,7 +64,7 @@ int32_t ring_write_ch(struct ring *ring, uint8_t ch)
  * This means that if you try to write 10 characters and there is only space for
  * 4 characters the function will return -4.
  */
-int32_t ring_write(struct ring * ring, uint8_t * data, ring_size_t size)
+int32_t ring_write(struct ring * ring, const uint8_t * data, ring_size_t size)
 {
 	int32_t i;
 
@@ -92,7 +92,7 @@ int32_t ring_write(struct ring * ring, uint8_t * data, ring_size_t size)
  * Note: Do not use this function inside an interrupt unless you made _SURE_
  * that the reading side can preempt your interrupt!!!
  */
-int32_t ring_safe_write_ch(struct ring *ring, uint8_t ch)
+int32_t ring_safe_write_ch(struct ring *ring, const uint8_t ch)
 {
 	int ret;
 	int retry_count = 100;
@@ -119,7 +119,7 @@ int32_t ring_safe_write_ch(struct ring *ring, uint8_t ch)
  * Note: Do not use this function inside an interrupt unless you made _SURE_
  * that the reading side can preempt your interrupt!!!
  */
-int32_t ring_safe_write(struct ring * ring, uint8_t * data, ring_size_t size)
+int32_t ring_safe_write(struct ring * ring, const uint8_t * data, ring_size_t size)
 {
 	int32_t i;
 
