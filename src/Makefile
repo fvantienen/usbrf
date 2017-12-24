@@ -22,9 +22,12 @@ BINARY = usbrf
 # The modules and helpers used for the usbrf module
 OBJS += modules/led.o modules/button.o modules/timer.o modules/cdcacm.o modules/cyrf6936.o modules/config.o modules/console.o
 OBJS += modules/ring.o modules/counter.o modules/protocol.o helper/dsm.o
-OBJS += protocol/dsm_hack.o
 
 # The different kind of protocols available
+OBJS += protocol/dsm_scanner.o
 #OBJS += protocol/dsm_receiver.o protocol/dsm_transmitter.o protocol/dsm_mitm.o
+
+# Enable pprzlink
+PPRZLINK = 1
 
 include ../Makefile.include

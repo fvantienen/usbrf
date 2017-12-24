@@ -3,7 +3,7 @@
 	[
 		{
 			"path": ".",
-            "file_include_patterns": ["*.c", "*.h", "*.md", "*.py", "*.scr", ".gitignore", "Makefile*"]
+            "file_include_patterns": ["*.c", "*.h", "*.md", "*.py", "*.scr", ".gitignore", "*.ld", "*.xml", "Makefile*"]
 		}
 	],
 	"settings":
@@ -11,7 +11,8 @@
 		"sublimeclang_options":
 		[
 			"-DSTM32F1",
-			"-I${folder:${project_path:superbitrf-firmware.sublime-project}}/libopencm3/include",
+			"-I${folder:${project_path:superbitrf-firmware.sublime-project}}/lib/libopencm3/include",
+                        "-I${folder:${project_path:superbitrf-firmware.sublime-project}}/lib/pprzlink/include",
 			"-I${folder:${project_path:superbitrf-firmware.sublime-project}}/src"
 		]
 	}

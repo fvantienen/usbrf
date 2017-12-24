@@ -52,4 +52,4 @@ ppzlink:
 
 clean:
 	$(Q)$(MAKE) -C libopencm3 clean
-	$(Q)$(MAKE) -C pprzlink clean
+	$(Q)$(MAKE) -C pprzlink uninstall

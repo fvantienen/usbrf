@@ -36,8 +36,9 @@
 #define DSM_CHA_CHB_SEND_TIME		400			/**< Time between Channel A and Channel B send */
 
 /* The maximum channekl number for DSM2 and DSMX */
-#define DSM_MAX_CHANNEL				0x4F		/**< Maximum channel number used for DSM2 and DSMX */
-#define DSM_BIND_PACKETS			300			/**< The amount of bind packets to send */
+#define DSM_MAX_CHANNEL				  0x4F		/**< Maximum channel number used for DSM2 and DSMX */
+#define DSM_MAX_USED_CHANNELS		23			/**< Maximum amunt of used channels when using DSMX */
+#define DSM_BIND_PACKETS			  300			/**< The amount of bind packets to send */
 
 /* The different kind of protocol definitions DSM2 and DSMX with 1 and 2 packets of data */
 enum dsm_protocol {

@@ -18,7 +18,8 @@
  */
 
 #include <stdint.h>
-#include "dsm_hack.h"
+#include "dsm_scanner.h"
+#include "modules/led.h"
 #include "modules/config.h"
 #include "modules/timer.h"
 #include "modules/cyrf6936.h"
@@ -26,17 +27,17 @@
 #include "helper/dsm.h"
 
 /* Main protocol structure */
-struct protocol_t protocol_dsm_hack = {
-	.name = "DSMH",
-	.start = protocol_dsm_hack_start,
-	.stop = protocol_dsm_hack_stop,
-	.run = protocol_dsm_hack_run,
-	.status = protocol_dsm_hack_status
+struct protocol_t protocol_dsm_scanner = {
+	.name = "DSM Scanner",
+	.start = protocol_dsm_scanner_start,
+	.stop = protocol_dsm_scanner_stop,
+	.run = protocol_dsm_scanner_run,
+	.status = protocol_dsm_scanner_status
 };
 
-static void protocol_dsm_hack_timer(void);
-static void protocol_dsm_hack_receive(bool error);
-static void protocol_dsm_hack_next(void);
+static void protocol_dsm_scanner_timer(void);
+static void protocol_dsm_scanner_receive(bool error);
+static void protocol_dsm_scanner_next(void);
 
 static uint8_t channel = 0;
 static bool dsm2 = false;
@@ -45,7 +46,7 @@ static uint8_t sop_col = 0;
 /**
  * Configure the CYRF and start scanning
  */
-void protocol_dsm_hack_start(void) {
+void protocol_dsm_scanner_start(void) {
 	uint8_t mfg_id[6];
 	console_print("\r\nDSM HACK starting...");
 
@@ -60,13 +61,13 @@ void protocol_dsm_hack_start(void) {
 	cyrf_get_mfg_id(mfg_id);
 
 	// Set the callbacks
-	timer1_register_callback(protocol_dsm_hack_timer);
-	cyrf_register_recv_callback(protocol_dsm_hack_receive);
+	timer1_register_callback(protocol_dsm_scanner_timer);
+	cyrf_register_recv_callback(protocol_dsm_scanner_receive);
 
 	// Start receiving and timer
 	dsm_set_channel(channel, dsm2, sop_col, (7 - sop_col), 0x0000);
 	cyrf_start_recv();
-	timer1_set(DSM_RECV_TIME*20);
+	timer1_set(DSM_RECV_TIME*(DSM_MAX_USED_CHANNELS+1)/2);
 
 	console_print("\r\nDSM HACK initialized 0x%02X 0x%02X 0x%02X 0x%02X", mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3]);
 }
@@ -74,7 +75,7 @@ void protocol_dsm_hack_start(void) {
 /**
  * Stop the timer
  */
-void protocol_dsm_hack_stop(void) {
+void protocol_dsm_scanner_stop(void) {
 	// Stop the timer
 	timer1_stop();
 
@@ -83,16 +84,16 @@ void protocol_dsm_hack_stop(void) {
 	cyrf_write_register(CYRF_RX_ABORT, 0x00);
 }
 
-void protocol_dsm_hack_run(void) {
+void protocol_dsm_scanner_run(void) {
 
 }
 
-void protocol_dsm_hack_status(void) {
+void protocol_dsm_scanner_status(void) {
 	console_print("\r\nScanning for %s at channel %d [%d]", (dsm2? "DSM2":"DSMX"), channel, sop_col);
 }
 
 
-static void protocol_dsm_hack_timer(void) {
+static void protocol_dsm_scanner_timer(void) {
 	timer1_stop();
 
 	// Abort the receive
@@ -100,13 +101,13 @@ static void protocol_dsm_hack_timer(void) {
 	cyrf_write_register(CYRF_RX_ABORT, 0x00);
 
 	// Goto the next channel
-	protocol_dsm_hack_next();
+	protocol_dsm_scanner_next();
 	cyrf_start_recv();
 
-	timer1_set(DSM_RECV_TIME*2);
+	timer1_set(DSM_RECV_TIME*(DSM_MAX_USED_CHANNELS+1)/2);
 }
 
-static void protocol_dsm_hack_receive(bool error) {
+static void protocol_dsm_scanner_receive(bool error) {
 	uint8_t packet_length, packet[16], rx_status , crc_lsb, crc_msb, i;
 
 	// Get the receive count, rx_status and the packet
@@ -114,19 +115,24 @@ static void protocol_dsm_hack_receive(bool error) {
 	rx_status = cyrf_get_rx_status();
 	cyrf_recv_len(packet, packet_length);
 
-	// Get the CRC
-	crc_lsb = cyrf_read_register(CYRF_RX_CRC_LSB);
-	crc_msb = cyrf_read_register(CYRF_RX_CRC_MSB);
+	// Since we are only waiting for packets for DSM length, ignore the rest
+	if(packet_length == 16) {
+		// Get the CRC
+		crc_lsb = cyrf_read_register(CYRF_RX_CRC_LSB);
+		crc_msb = cyrf_read_register(CYRF_RX_CRC_MSB);
 
-	// Abort the receive
-	cyrf_set_mode(CYRF_MODE_SYNTH_RX, true);
-	cyrf_write_register(CYRF_RX_ABORT, 0x00);
+		// Abort the receive
+		cyrf_set_mode(CYRF_MODE_SYNTH_RX, true);
+		cyrf_write_register(CYRF_RX_ABORT, 0x00);
 
-	console_print("\r\nScanning for %s at channel %d [%d]", (dsm2? "DSM2":"DSMX"), channel, sop_col);
-	console_print("\r\nGot packet (status: %02X, error: %d) [%d]: ", rx_status, error, packet_length);
-	for(i = 0; i < packet_length; i++)
-		console_print("%02X", packet[i]);
-	console_print(" (%02X%02X)", crc_lsb, crc_msb);
+		console_print("\r\nScanning for %s at channel %d [%d]", (dsm2? "DSM2":"DSMX"), channel, sop_col);
+		console_print("\r\nGot packet (status: %02X, error: %d) [%d]: ", rx_status, error, packet_length);
+		for(i = 0; i < packet_length; i++)
+			console_print("%02X", packet[i]);
+		console_print(" (%02X%02X)", crc_lsb, crc_msb);
+
+		LED_TOGGLE(LED_RX);
+	}
 
 	// Start receiving
 	cyrf_start_recv();
@@ -135,7 +141,7 @@ static void protocol_dsm_hack_receive(bool error) {
 /**
  * Go to the next channel for scanning
  */
-static void protocol_dsm_hack_next(void) {
+static void protocol_dsm_scanner_next(void) {
 	dsm2 = !dsm2;
 
 	// Only change on DSM2 SOP_DATA codes

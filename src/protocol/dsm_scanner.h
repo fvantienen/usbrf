@@ -17,15 +17,15 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DSM_HACK_H_
-#define DSM_HACK_H_
+#ifndef DSM_SCANNER_H_
+#define DSM_SCANNER_H_
 
 #include "modules/protocol.h"
 
-extern struct protocol_t protocol_dsm_hack;
-void protocol_dsm_hack_start(void);
-void protocol_dsm_hack_stop(void);
-void protocol_dsm_hack_run(void);
-void protocol_dsm_hack_status(void);
+extern struct protocol_t protocol_dsm_scanner;
+void protocol_dsm_scanner_start(void);
+void protocol_dsm_scanner_stop(void);
+void protocol_dsm_scanner_run(void);
+void protocol_dsm_scanner_status(void);
 
-#endif /* DSM_HACK_H_ */
+#endif /* DSM_SCANNER_H_ */

@@ -7,7 +7,7 @@ The SuperbitRF firmware is capable of transmitting, receiving and intercepting D
 Compiler:
 ========
 
-We first need the libopencm3. We get it using the git submodules :
+We first need the libopencm3 and pprzlink library. We get it using the git submodules :
 
     git submodule init
     git submodule update

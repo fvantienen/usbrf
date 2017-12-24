@@ -145,7 +145,7 @@ void dsm_generate_channels_dsmx(uint8_t mfg_id[], uint8_t *channels) {
 	uint32_t id_tmp = id;
 
 	// While not all channels are set
-	while(idx < 23) {
+	while(idx < DSM_MAX_USED_CHANNELS) {
 		int i;
 		int count_3_27 = 0, count_28_51 = 0, count_52_76 = 0;
 

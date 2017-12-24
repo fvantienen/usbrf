@@ -3,4 +3,4 @@
 	url = https://github.com/libopencm3/libopencm3.git
 [submodule "lib/pprzlink"]
 	path = lib/pprzlink
-	url = git@github.com:paparazzi/pprzlink.git
+	url = git@github.com:fvantienen/pprzlink.git

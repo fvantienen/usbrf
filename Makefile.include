@@ -66,10 +66,17 @@ SEMIHOSTING ?= 0
 ifeq ($(SEMIHOSTING),1)
 $(info **** Semihosting enabled!!! ****)
 CFLAGS          += -DSEMIHOSTING=1
-LDFLAGS          += --specs=rdimon.specs -lrdimon
+LDFLAGS         += --specs=rdimon.specs -lrdimon
 else
 CFLAGS          += -DSEMIHOSTING=0
-LDFLAGS          += -lnosys
+LDFLAGS         += -lnosys
+endif
+
+PPRZLINK_DIR    ?= $(PROJECT_LIB)/pprzlink/var
+PPRZLINK_SRC    = $(PPRZLINK_DIR)/share/pprzlink/src
+ifeq ($(PPRZLINK),1)
+OBJS            += $(PPRZLINK_SRC)/pprz_transport.o
+CFLAGS          += -I$(PPRZLINK_DIR)/include
 endif
 
 ifneq ($(OPENCM3_DIR),)
@@ -139,6 +146,8 @@ flash: $(BINARY).flash
 clean:
 	$(Q)find $(PROJECT_TLD) -name *.o -delete
 	$(Q)find $(PROJECT_TLD) -name *.d -delete
+	$(Q)find $(PPRZLINK_SRC) -name *.o -delete
+	$(Q)find $(PPRZLINK_SRC) -name *.d -delete
 	$(Q)find . -name *.o -delete
 	$(Q)find . -name *.d -delete
 	$(Q)rm -f *.elf

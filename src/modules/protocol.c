@@ -21,10 +21,10 @@
 #include <stdio.h>
 #include "protocol.h"
 #include "console.h"
-#include "protocol/dsm_hack.h"
+#include "protocol/dsm_scanner.h"
 
 /* All protocols */
-static struct protocol_t *protocols[] = { &protocol_dsm_hack };
+static struct protocol_t *protocols[] = { &protocol_dsm_scanner };
 static const int protocols_nb = sizeof(protocols) / sizeof(protocols[0]);
 static int protocol_cur_idx;
 
