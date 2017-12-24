@@ -20,6 +20,8 @@
 #ifndef BOARD_V0_1_H_
 #define BOARD_V0_1_H_
 
+#define BOARD_ID 0
+
 /* Define the LEDS (optional) */
 #define LED_BIND					1
 #define USE_LED_1					1								/**< If the board has the 1 led */

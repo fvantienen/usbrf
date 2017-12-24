@@ -20,6 +20,7 @@
 #include "pprzlink.h"
 #include "cdcacm.h"
 #include "ring.h"
+#include "led.h"
 
 struct pprzlink_t pprzlink;
 
@@ -52,8 +53,24 @@ void pprzlink_init(void) {
  * Main pprzlink loop trying to parse messages from the cdcacm data endpoint
  */
 void pprzlink_run(void) {
-  // Parse single bytes
+  // Parse pprzlink messages
   pprz_check_and_parse(&pprzlink.dev, &pprzlink.tp, pprzlink.recv_buf, &pprzlink.msg_received);
+  if(pprzlink.msg_received) {
+  	LED_TOGGLE(LED_RX);
+
+  	uint8_t msg_id = IdOfPprzMsg(pprzlink.recv_buf);
+  	if(pprzlink.msg_cb[msg_id] != NULL)
+  		pprzlink.msg_cb[msg_id](pprzlink.recv_buf);
+
+  	pprzlink.msg_received = false;
+  }
+}
+
+/**
+ * Add a message callback
+ */
+void pprzlink_register_cb(uint8_t msg_id, msg_cb_t cb) {
+	pprzlink.msg_cb[msg_id] = cb;
 }
 
 bool pprzlink_check_free_space(struct pprzlink_t *link, long *fd __attribute__((unused)), uint16_t len) {

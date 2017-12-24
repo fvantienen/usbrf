@@ -18,6 +18,8 @@
  */
 
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/desig.h>
+#define SW_VERSION 1000
 
 /* Load the modules */
 #include "modules/config.h"
@@ -31,6 +33,7 @@
 #include "modules/pprzlink.h"
 #include "modules/protocol.h"
 
+static void msg_req_info_cb(uint8_t *data);
 
 int main(void) {
 	// Setup the clock
@@ -48,6 +51,9 @@ int main(void) {
 	pprzlink_init();
 	protocol_init();
 
+	// Bind INFO callback
+	pprzlink_register_cb(PPRZ_MSG_ID_REQ_INFO, msg_req_info_cb);
+
 	/* The main loop */
 	while (1) {
 		cdcacm_run();
@@ -57,4 +63,12 @@ int main(void) {
 	}
 
 	return 0;
+}
+
+static void msg_req_info_cb(uint8_t *data) {
+	uint32_t hw_id[3];
+	uint32_t board = BOARD_ID;
+	uint32_t sw_version = SW_VERSION;
+	desig_get_unique_id(hw_id);
+	pprz_msg_send_INFO(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &board, &sw_version, 3, hw_id);
 }

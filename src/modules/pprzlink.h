@@ -20,7 +20,11 @@
 #ifndef PPRZLINK_H_
 #define PPRZLINK_H_
 
+#define FALSE 0
 #include "pprzlink/pprz_transport.h"
+#include "pprzlink/usbrf_msg.h"
+
+typedef void (*msg_cb_t)(uint8_t *data);
 
 /* Main paparazzi link variables */
 struct pprzlink_t {
@@ -30,11 +34,13 @@ struct pprzlink_t {
 	bool msg_received;				///< Whether a message is received or not
 	struct ring *r_rx;				///< The receive ring buffer
 	struct ring *r_tx;				///< The transmit ring buffer
+	msg_cb_t msg_cb[256];			///< The callback functions for the received messages
 };
 
 /* Extern variables and functions */
 extern struct pprzlink_t pprzlink;
 void pprzlink_init(void);
 void pprzlink_run(void);
+void pprzlink_register_cb(uint8_t msg_id, msg_cb_t cb);
 
 #endif /* PPRZLINK_H_ */
