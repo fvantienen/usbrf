@@ -158,6 +158,8 @@ int main(void)
 
 	/* Main loop */
 	while (1) {
+		cyrf_run();
+		cdcacm_run();
 	}
 
 	return 0;

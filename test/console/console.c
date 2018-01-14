@@ -53,7 +53,7 @@ int main(void) {
 
 	/* The main loop */
 	while (1) {
-		cdcacm_process();
+		cdcacm_run();
 		console_run();
 	}
 
