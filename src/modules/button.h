@@ -31,20 +31,19 @@
 #define BTN_NVIC(i) 		_(BTN_ ## i ## _NVIC)
 #define BTN_EXTI(i)			_(BTN_ ## i ## _EXTI)
 
-#define BTN_INIT(i) {                               \
-	rcc_peripheral_enable_clock(&RCC_APB2ENR,       \
-								BTN_GPIO_CLK(i) | RCC_APB2ENR_AFIOEN);	\
-	gpio_set_mode(BTN_GPIO_PORT(i),                 \
-				  GPIO_MODE_INPUT,                  \
-				  GPIO_CNF_INPUT_FLOAT,             \
-				  BTN_GPIO_PIN(i));                 \
-	exti_select_source(BTN_EXTI(i),					\
-					   BTN_GPIO_PORT(i));			\
-	exti_set_trigger(BTN_EXTI(i), 					\
-					 EXTI_TRIGGER_FALLING);			\
-	exti_enable_request(BTN_EXTI(i));				\
-	nvic_set_priority(BTN_NVIC(i), 0);              \
-	nvic_enable_irq(BTN_NVIC(i));					\
+#define BTN_INIT(i) {                         \
+	rcc_periph_clock_enable(BTN_GPIO_CLK(i));		\
+	gpio_set_mode(BTN_GPIO_PORT(i),             \
+				  GPIO_MODE_INPUT,                  	\
+				  GPIO_CNF_INPUT_FLOAT,             	\
+				  BTN_GPIO_PIN(i));                 	\
+	exti_select_source(BTN_EXTI(i),							\
+					   BTN_GPIO_PORT(i));								\
+	exti_set_trigger(BTN_EXTI(i), 							\
+					 EXTI_TRIGGER_FALLING);							\
+	exti_enable_request(BTN_EXTI(i));						\
+	nvic_set_priority(BTN_NVIC(i), 0);          \
+	nvic_enable_irq(BTN_NVIC(i));								\
 }
 
 /* External functions */

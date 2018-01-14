@@ -28,6 +28,7 @@
 #include "modules/timer.h"
 #include "modules/cdcacm.h"
 #include "modules/counter.h"
+#include "modules/ant_switch.h"
 #include "modules/cyrf6936.h"
 #include "modules/console.h"
 #include "modules/pprzlink.h"
@@ -37,7 +38,11 @@ static void msg_req_info_cb(uint8_t *data);
 
 int main(void) {
 	// Setup the clock
+#ifndef BOARD_V2_0
 	rcc_clock_setup_in_hse_12mhz_out_72mhz();
+#else
+	rcc_clock_setup_in_hse_8mhz_out_72mhz();
+#endif
 
 	// Initialize the modules
 	config_init();
@@ -46,6 +51,7 @@ int main(void) {
 	cdcacm_init();
 	button_init();
 	counter_init();
+	ant_switch_init();
 	cyrf_init();
 	console_init();
 	pprzlink_init();
@@ -56,6 +62,7 @@ int main(void) {
 
 	/* The main loop */
 	while (1) {
+		cyrf_run();
 		cdcacm_run();
 		pprzlink_run();
 		console_run();
@@ -65,10 +72,16 @@ int main(void) {
 	return 0;
 }
 
+/**
+ * Receive information request
+ */
 static void msg_req_info_cb(uint8_t *data) {
 	uint32_t hw_id[3];
 	uint32_t board = BOARD_ID;
 	uint32_t sw_version = SW_VERSION;
 	desig_get_unique_id(hw_id);
+	console_print("\r\nPPRZLINK connected (version: %d)", DL_REQ_INFO_version(data));
+
+	// Send the information back
 	pprz_msg_send_INFO(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &board, &sw_version, 3, hw_id);
 }

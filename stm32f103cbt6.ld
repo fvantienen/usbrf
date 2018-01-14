@@ -17,7 +17,7 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Linker script for Olimex STM32-H103 (STM32F103RBT6, 128K flash, 20K RAM). */
+/* Linker script for USBRF and 4-in-1 module (STM32F103TB/CB, 128K flash, 20K RAM). */
 
 /* Define memory regions. */
 MEMORY

@@ -191,15 +191,12 @@ void dsm_generate_channels_dsmx(uint8_t mfg_id[], uint8_t *channels) {
 /**
  * Set the current channel with SOP, CRC and data code
  * @param[in] channel The channel that needs to be set
- * @param[in] is_dsm2 Whether we want to set a DSM2 channel
+ * @param[in] pn_row The pn row number
  * @param[in] sop_col The SOP code column number
  * @param[in] data_col The DATA code column number
  * @param[in] crc_seed The cec seed that needs to be set
  */
-void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed) {
-	uint8_t pn_row;
-	pn_row = is_dsm2? channel % 5 : (channel-2) % 5;
-
+void dsm_set_chan(uint8_t channel, uint8_t pn_row, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed) {
 	// Update the CRC, SOP and Data code
 	cyrf_set_crc_seed(crc_seed);
 	cyrf_set_sop_code(pn_codes[pn_row][sop_col]);
@@ -209,7 +206,21 @@ void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t dat
 	cyrf_set_channel(channel);
 
 	DEBUG(dsm, "Set channel: 0x%02X (is_dsm2: 0x%02X, pn_row: 0x%02X, data_col: 0x%02X, sop_col: 0x%02X, crc_seed: 0x%04X)",
-					channel, is_dsm2, pn_row, data_col, sop_col, crc_seed);
+					channel, is_dsm2, pn_row, data_col, sop_col, crc_seed)
+}
+
+/**
+ * Set the current channel with SOP, CRC and data code
+ * @param[in] channel The channel that needs to be set
+ * @param[in] is_dsm2 Whether we want to set a DSM2 channel
+ * @param[in] sop_col The SOP code column number
+ * @param[in] data_col The DATA code column number
+ * @param[in] crc_seed The cec seed that needs to be set
+ */
+void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed) {
+	uint8_t pn_row;
+	pn_row = is_dsm2? channel % 5 : (channel-2) % 5;
+	dsm_set_chan(channel, pn_row, sop_col, data_col, crc_seed);
 }
 
 /**

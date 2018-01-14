@@ -68,6 +68,7 @@ void dsm_set_config(void);
 void dsm_set_config_bind(void);
 void dsm_set_config_transfer(void);
 void dsm_generate_channels_dsmx(uint8_t mfg_id[], uint8_t *channels);
+void dsm_set_chan(uint8_t channel, uint8_t pn_row, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 void dsm_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool is_11bit, int16_t* channels);
 

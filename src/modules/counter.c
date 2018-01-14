@@ -76,14 +76,6 @@ void counter_init(void)
   counter_status.init = true;
 }
 
-/**
- * Handler for the counter module periodically called from the main loop.
- */
-void counter_handler(void)
-{
-
-}
-
 /* Interrupt handlers */
 void sys_tick_handler(void);
 void sys_tick_handler(void)

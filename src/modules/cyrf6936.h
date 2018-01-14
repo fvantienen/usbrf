@@ -206,6 +206,7 @@ enum {
 
 /* The external functions */
 void cyrf_init(void);
+void cyrf_run(void);
 
 typedef void (*cyrf_on_event)(const bool error);
 void cyrf_register_recv_callback(cyrf_on_event callback);
@@ -238,6 +239,7 @@ void cyrf_send_len(const uint8_t *data, const uint8_t length);
 void cyrf_send(const uint8_t *data);
 void cyrf_resend(void);
 void cyrf_start_recv(void);
+void cyrf_abort_recv(void);
 void cyrf_start_transmit(void);
 void cyrf_recv_len(uint8_t *data, const uint8_t length);
 void cyrf_recv(uint8_t *data);

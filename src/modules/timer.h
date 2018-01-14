@@ -22,6 +22,7 @@
 
 // Include the board specifications for the timers
 #include "../board.h"
+#include <stdbool.h>
 
 typedef void (*timer_on_event) (void);
 
@@ -31,6 +32,7 @@ void timer_init(void);
 void timer1_set(uint16_t us);
 uint16_t timer1_get_time(void);
 void timer1_stop(void);
+void timer1_wait(bool wait);
 void timer1_register_callback(timer_on_event callback);
 
 #endif /* MODULES_TIMER_H_ */

@@ -26,23 +26,33 @@
 // Include the board specifications for the leds
 #include "../board.h"
 
+/* Define the empty LED */
+#define NO_LED 0
+#define LED_0_GPIO_PORT				0
+#define LED_0_GPIO_PIN				0
+
 /* Control the leds from the board */
 #define _(i)  i
 #define LED_GPIO_PORT(i)	_(LED_ ## i ## _GPIO_PORT)
 #define LED_GPIO_PIN(i)		_(LED_ ## i ## _GPIO_PIN)
 #define LED_GPIO_CLK(i)		_(LED_ ## i ## _GPIO_CLK)
 
-#define LED_ON(i)		gpio_clear(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
-#define LED_OFF(i)		gpio_set(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
-#define LED_TOGGLE(i)	gpio_toggle(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
+#ifdef LED_INV
+#define LED_ON(i)		if(i > 0) gpio_set(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
+#define LED_OFF(i)	if(i > 0) gpio_clear(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
+#else
+#define LED_ON(i)		if(i > 0) gpio_clear(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
+#define LED_OFF(i)	if(i > 0) gpio_set(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
+#endif
+#define LED_TOGGLE(i)	if(i > 0) gpio_toggle(LED_GPIO_PORT(i), LED_GPIO_PIN(i))
 
-#define LED_INIT(i) {                               \
-	rcc_peripheral_enable_clock(&RCC_APB2ENR,       \
-								LED_GPIO_CLK(i));	\
-	gpio_set_mode(LED_GPIO_PORT(i),                 \
-				  GPIO_MODE_OUTPUT_50_MHZ,          \
-				  GPIO_CNF_OUTPUT_PUSHPULL,         \
-				  LED_GPIO_PIN(i));                 \
+#define LED_INIT(i) {                         \
+	rcc_periph_clock_enable(LED_GPIO_CLK(i));		\
+	gpio_set_mode(LED_GPIO_PORT(i),             \
+				  GPIO_MODE_OUTPUT_50_MHZ,          	\
+				  GPIO_CNF_OUTPUT_PUSHPULL,         	\
+				  LED_GPIO_PIN(i));                 	\
+	LED_OFF(i);																	\
 }
 
 

@@ -28,14 +28,19 @@
 #include "cyrf6936.h"
 #include "counter.h"
 #include "config.h"
+#include "timer.h"
 
 /* The CYRF receive and send callbacks */
 cyrf_on_event _cyrf_recv_callback = NULL;
 cyrf_on_event _cyrf_send_callback = NULL;
+volatile bool cyrf_busy = false;
 
 /* The pin for selecting the device */
 #define CYRF_CS_HI() gpio_set(CYRF_DEV_SS_PORT, CYRF_DEV_SS_PIN)
 #define CYRF_CS_LO() gpio_clear(CYRF_DEV_SS_PORT, CYRF_DEV_SS_PIN)
+
+/* Internal functions */
+static void cyrf_process(void);
 
 /**
  * Initialize the CYRF6936
@@ -43,34 +48,36 @@ cyrf_on_event _cyrf_send_callback = NULL;
 void cyrf_init(void) {
 	DEBUG(cyrf6936, "Initializing");
 	/* Initialize the clocks */
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, CYRF_DEV_SPI_CLK); //SPI
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, CYRF_DEV_IRQ_CLK); //IRQ
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, CYRF_DEV_RST_CLK); //RST
+	rcc_periph_clock_enable(_SPI(CYRF_DEV_SPI, CLK));
+	rcc_periph_clock_enable(CYRF_DEV_RST_CLK);
 
 	/* Initialize the GPIO */
-	gpio_set_mode(CYRF_DEV_IRQ_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
-			CYRF_DEV_IRQ_PIN); 													//IRQ
 	gpio_set_mode(CYRF_DEV_RST_PORT, GPIO_MODE_OUTPUT_50_MHZ,
 			GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_RST_PIN); 						//RST
 	gpio_set_mode(CYRF_DEV_SS_PORT, GPIO_MODE_OUTPUT_50_MHZ,
 			GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_SS_PIN); 						//SS
-	gpio_set_mode(CYRF_DEV_SCK_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, CYRF_DEV_SCK_PIN); 					//SCK
-	gpio_set_mode(CYRF_DEV_MISO_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
-			CYRF_DEV_MISO_PIN); 												//MISO
-	gpio_set_mode(CYRF_DEV_MOSI_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, CYRF_DEV_MOSI_PIN); 				//MOSI
+	gpio_set_mode(_SPI(CYRF_DEV_SPI, SCK_PORT), GPIO_MODE_OUTPUT_50_MHZ,
+			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, _SPI(CYRF_DEV_SPI, SCK_PIN)); 					//SCK
+	gpio_set_mode(_SPI(CYRF_DEV_SPI, MISO_PORT), GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+			_SPI(CYRF_DEV_SPI, MISO_PIN)); 												//MISO
+	gpio_set_mode(_SPI(CYRF_DEV_SPI, MOSI_PORT), GPIO_MODE_OUTPUT_50_MHZ,
+			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, _SPI(CYRF_DEV_SPI, MOSI_PIN)); 				//MOSI
 
+#ifdef CYRF_DEV_IRQ_PORT
 	/* Enable the IRQ */
+	rcc_peripheral_enable_clock(&RCC_APB2ENR, CYRF_DEV_IRQ_CLK); //IRQ
+	gpio_set_mode(CYRF_DEV_IRQ_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+			CYRF_DEV_IRQ_PIN);
 	exti_select_source(CYRF_DEV_IRQ_EXTI, CYRF_DEV_IRQ_PORT);
 	exti_set_trigger(CYRF_DEV_IRQ_EXTI, EXTI_TRIGGER_FALLING);
 	exti_enable_request(CYRF_DEV_IRQ_EXTI);
 
 	// Enable the IRQ NVIC
 	nvic_enable_irq(CYRF_DEV_IRQ_NVIC);
+#endif
 
 	/* Reset SPI, SPI_CR1 register cleared, SPI is disabled */
-	spi_reset(CYRF_DEV_SPI);
+	spi_reset(_SPI(CYRF_DEV_SPI, BUS));
 
 	/* Set up SPI in Master mode with:
 	 * Clock baud rate: 1/64 of peripheral clock frequency
@@ -79,20 +86,20 @@ void cyrf_init(void) {
 	 * Data frame format: 8-bit
 	 * Frame format: MSB First
 	 */
-	spi_init_master(CYRF_DEV_SPI, SPI_CR1_BAUDRATE_FPCLK_DIV_64,
+	spi_init_master(_SPI(CYRF_DEV_SPI, BUS), SPI_CR1_BAUDRATE_FPCLK_DIV_64,
 			SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE, SPI_CR1_CPHA_CLK_TRANSITION_1,
 			SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
 
 	/* Set NSS management to software. */
-	spi_enable_software_slave_management(CYRF_DEV_SPI);
-	spi_set_nss_high(CYRF_DEV_SPI);
+	spi_enable_software_slave_management(_SPI(CYRF_DEV_SPI, BUS));
+	spi_set_nss_high(_SPI(CYRF_DEV_SPI, BUS));
 
-	/* Enable SPI1 periph. */
-	spi_enable(CYRF_DEV_SPI);
+	/* Enable SPI periph. */
+	spi_enable(_SPI(CYRF_DEV_SPI, BUS));
 
 	/* Reset the CYRF chip */
 	gpio_set(CYRF_DEV_RST_PORT, CYRF_DEV_RST_PIN);
-	counter_wait_poll(counter_get_ticks_of_ms(300));
+	counter_wait_poll(counter_get_ticks_of_ms(150));
 	gpio_clear(CYRF_DEV_RST_PORT, CYRF_DEV_RST_PIN);
 	counter_wait_poll(counter_get_ticks_of_ms(300));
 
@@ -102,26 +109,54 @@ void cyrf_init(void) {
 }
 
 /**
- * On interrupt request
+ * Poll the status registers if the IRQ pin isn connected
+ */
+void cyrf_run(void) {
+#ifndef CYRF_DEV_IRQ_ISR
+	static uint32_t start_ticks = 0;
+	if(start_ticks + counter_get_ticks_of_us(200) <= counter_get_ticks()) {
+		start_ticks = counter_get_ticks();
+		cyrf_process();
+	}
+#endif
+}
+
+#ifdef CYRF_DEV_IRQ_ISR
+/**
+ * On interrupt request do a process of the register
  */
 void CYRF_DEV_IRQ_ISR(void) {
+	cyrf_process();
+	exti_reset_request(CYRF_DEV_IRQ_EXTI);
+}
+#endif
+
+/**
+ * Process the CYRF requests */
+static void cyrf_process(void) {
 	uint8_t tx_irq_status, rx_irq_status;
+	timer1_wait(true);
 
 	// Read the transmit IRQ
 	tx_irq_status = cyrf_read_register(CYRF_TX_IRQ_STATUS);
-	if (((tx_irq_status & CYRF_TXC_IRQ) || (tx_irq_status & CYRF_TXE_IRQ))
+	if((tx_irq_status & 0x3) == 0x2)
+		tx_irq_status |= cyrf_read_register(CYRF_TX_IRQ_STATUS);
+	if (((tx_irq_status & CYRF_TXC_IRQ))
 			&& _cyrf_send_callback != NULL) {
 		_cyrf_send_callback((tx_irq_status & CYRF_TXE_IRQ) > 0x0);
 	}
 
 	// Read the read IRQ
 	rx_irq_status = cyrf_read_register(CYRF_RX_IRQ_STATUS);
-	if (((rx_irq_status & CYRF_RXC_IRQ) || (rx_irq_status & CYRF_RXE_IRQ))
+	if((rx_irq_status & 0x3) == 0x2)
+		rx_irq_status |= cyrf_read_register(CYRF_RX_IRQ_STATUS);
+	if (((rx_irq_status & CYRF_RXC_IRQ))
 			&& _cyrf_recv_callback != NULL) {
+		cyrf_write_register(CYRF_RX_IRQ_STATUS, 0x80); // need to set RXOW before data read
 		_cyrf_recv_callback((rx_irq_status & CYRF_RXE_IRQ) > 0x0);
 	}
 
-	exti_reset_request(CYRF_DEV_IRQ_EXTI);
+	timer1_wait(false);
 }
 
 /**
@@ -147,8 +182,8 @@ void cyrf_register_send_callback(cyrf_on_event callback) {
  */
 void cyrf_write_register(const uint8_t address, const uint8_t data) {
 	CYRF_CS_LO();
-	spi_xfer(CYRF_DEV_SPI, CYRF_DIR | address);
-	spi_xfer(CYRF_DEV_SPI, data);
+	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
+	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data);
 	CYRF_CS_HI();
 }
 
@@ -161,10 +196,10 @@ void cyrf_write_register(const uint8_t address, const uint8_t data) {
 void cyrf_write_block(const uint8_t address, const uint8_t data[], const int length) {
 	int i;
 	CYRF_CS_LO();
-	spi_xfer(CYRF_DEV_SPI, CYRF_DIR | address);
+	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
 
 	for (i = 0; i < length; i++)
-		spi_xfer(CYRF_DEV_SPI, data[i]);
+		spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data[i]);
 
 	CYRF_CS_HI();
 }
@@ -177,8 +212,8 @@ void cyrf_write_block(const uint8_t address, const uint8_t data[], const int len
 uint8_t cyrf_read_register(const uint8_t address) {
 	uint8_t data;
 	CYRF_CS_LO();
-	spi_xfer(CYRF_DEV_SPI, address);
-	data = spi_xfer(CYRF_DEV_SPI, 0);
+	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
+	data = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
 	CYRF_CS_HI();
 	return data;
 }
@@ -192,10 +227,10 @@ uint8_t cyrf_read_register(const uint8_t address) {
 void cyrf_read_block(const uint8_t address, uint8_t data[], const int length) {
 	int i;
 	CYRF_CS_LO();
-	spi_xfer(CYRF_DEV_SPI, address);
+	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
 
 	for (i = 0; i < length; i++)
-		data[i] = spi_xfer(CYRF_DEV_SPI, 0);
+		data[i] = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
 
 	CYRF_CS_HI();
 }
@@ -408,6 +443,14 @@ void cyrf_start_recv(void) {
 	cyrf_write_register(CYRF_RX_IRQ_STATUS, CYRF_RXOW_IRQ); // Clear the RX overwrite
 	cyrf_write_register(CYRF_RX_CTRL, CYRF_RX_GO | CYRF_RXC_IRQEN | CYRF_RXE_IRQEN); // Start receiving and set the IRQ
 	DEBUG(cyrf6936, "START RECEIVE");
+}
+
+/**
+ * Abort the receiving
+ */
+void cyrf_abort_recv(void) {
+	cyrf_set_mode(CYRF_MODE_SYNTH_RX, true);
+	cyrf_write_register(CYRF_RX_ABORT, 0x00);
 }
 
 /**

@@ -179,6 +179,7 @@ static const char *usb_strings[] = {
 	"SuperbitRF DFU",
 };
 
+#ifdef USB_DETACH_PORT
 /**
  * When there is a successfull DFU detach
  */
@@ -195,15 +196,19 @@ static void dfu_detach_complete(usbd_device *usbd_dev, struct usb_setup_data *re
 	/* Reset core to enter bootloader */
 	scb_reset_core();
 }
+#endif
 
 
 /**
- * CDCACM console request received
+ * CDCACM control request received
  */
-static int cdcacm_console_request(usbd_device *usbd_dev,
+static int cdcacm_control_request(usbd_device *usbd_dev,
 		struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 		void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req)) {
 	(void)usbd_dev;
+#ifndef USB_DETACH_PORT
+	(void)complete;
+#endif
 
 	switch(req->bRequest) {
 	case USB_CDC_REQ_SET_CONTROL_LINE_STATE:
@@ -231,12 +236,14 @@ static int cdcacm_console_request(usbd_device *usbd_dev,
 
 			return 1;
 		}
+#ifdef USB_DETACH_PORT
 	case DFU_DETACH:
 		if(req->wIndex == 4) {
 			*complete = dfu_detach_complete;
 			return 1;
 		}
 		return 0;
+#endif
 	}
 	return 0;
 }
@@ -265,7 +272,6 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep) {
 /**
  * CDCACM console recieve callback
  */
-
 static void cdcacm_console_rx_cb(usbd_device *usbd_dev, uint8_t ep) {
 	usbd_ep_nak_set(usbd_dev, ep, 1);
 
@@ -307,7 +313,7 @@ static void cdcacm_set_config_callback(usbd_device *usbd_dev, uint16_t wValue) {
 	usbd_register_control_callback(usbd_dev,
 			USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
 			USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-			cdcacm_console_request);
+			cdcacm_control_request);
 
 	/* Notify the host that DCD is asserted.
 	 * Allows the use of /dev/tty* devices on *BSD/MacOS
@@ -327,6 +333,7 @@ static void cdcacm_set_config_callback(usbd_device *usbd_dev, uint16_t wValue) {
 	usbd_ep_write_packet(usbd_dev, 0x84, buf, 10);
 }
 
+#ifdef USB_VBUS_PORT
 void exti15_10_isr(void)
 {
 	if (gpio_get(USB_VBUS_PORT, USB_VBUS_PIN)) {
@@ -365,6 +372,7 @@ static void cdcacm_init_vbus(void) {
 
 	exti15_10_isr();
 }
+#endif
 
 /**
  * Initialize the CDCACM
@@ -390,7 +398,9 @@ void cdcacm_init(void) {
 	nvic_set_priority(NVIC_USB_LP_CAN_RX0_IRQ, (2 << 4));
 	nvic_enable_irq(NVIC_USB_LP_CAN_RX0_IRQ);
 
+#ifdef USB_VBUS_PORT
 	cdcacm_init_vbus();
+#endif
 }
 
 /**

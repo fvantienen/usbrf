@@ -24,22 +24,23 @@
 
 /* Define the LEDS (optional) */
 #define LED_BIND					1
+#define LED_RX						2
+#define LED_TX						3
+
 #define USE_LED_1					1								/**< If the board has the 1 led */
 #define LED_1_GPIO_PORT				GPIOB							/**< The 1 led GPIO port */
 #define LED_1_GPIO_PIN				GPIO2							/**< The 1 led GPIO pin */
-#define LED_1_GPIO_CLK				RCC_APB2ENR_IOPBEN				/**< The 1 led GPIO clock */
+#define LED_1_GPIO_CLK				RCC_GPIOB				/**< The 1 led GPIO clock */
 
-#define LED_RX						2
 #define USE_LED_2					1
 #define LED_2_GPIO_PORT				GPIOB
 #define LED_2_GPIO_PIN				GPIO10
-#define LED_2_GPIO_CLK				RCC_APB2ENR_IOPBEN
+#define LED_2_GPIO_CLK				RCC_GPIOB
 
-#define LED_TX						3
 #define USE_LED_3					1
 #define LED_3_GPIO_PORT				GPIOB
 #define LED_3_GPIO_PIN				GPIO11
-#define LED_3_GPIO_CLK				RCC_APB2ENR_IOPBEN
+#define LED_3_GPIO_CLK				RCC_GPIOB
 
 /* Define the BIND button (optional) */
 #define USE_BTN_BIND				1								/**< If the board has a bind button */
@@ -59,17 +60,23 @@
 #define USB_VBUS_CLK				RCC_APB2ENR_IOPAEN				/**< The USB VBus GPIO clock */
 #define USB_VBUS_IRQ				NVIC_EXTI15_10_IRQ				/**< The USB VBus NVIC for for the interrupt */
 
+/* Define the SPI busses */
+#define __SPI(i, j) i ## _ ## j
+#define _SPI(i, j)  __SPI(i, j)
+
+#define _SPI1_BUS					SPI1 									/**< The SPI bus */
+#define _SPI1_CLK			RCC_SPI1				/**< The SPI clock */
+#define _SPI1_SCK_PORT			GPIOA							/**< The SPI SCK port */
+#define _SPI1_SCK_PIN			GPIO5							/**< The SPI SCK pin */
+#define _SPI1_MISO_PORT			GPIOA							/**< The SPI MISO port */
+#define _SPI1_MISO_PIN			GPIO6							/**< The SPI MISO pin */
+#define _SPI1_MOSI_PORT			GPIOA							/**< The SPI MOSI port */
+#define _SPI1_MOSI_PIN			GPIO7							/**< The SPI MOSI pin */
+
 /* Define the CYRF6936 chip */
 #define CYRF_DEV_SPI				SPI1							/**< The SPI connection number */
-#define CYRF_DEV_SPI_CLK			RCC_APB2ENR_SPI1EN				/**< The SPI clock */
 #define CYRF_DEV_SS_PORT			GPIOA							/**< The SPI SS port */
 #define CYRF_DEV_SS_PIN				GPIO4							/**< The SPI SS pin */
-#define CYRF_DEV_SCK_PORT			GPIOA							/**< The SPI SCK port */
-#define CYRF_DEV_SCK_PIN			GPIO5							/**< The SPI SCK pin */
-#define CYRF_DEV_MISO_PORT			GPIOA							/**< The SPI MISO port */
-#define CYRF_DEV_MISO_PIN			GPIO6							/**< The SPI MISO pin */
-#define CYRF_DEV_MOSI_PORT			GPIOA							/**< The SPI MOSI port */
-#define CYRF_DEV_MOSI_PIN			GPIO7							/**< The SPI MOSI pin */
 #define CYRF_DEV_RST_PORT			GPIOB							/**< The RST GPIO port*/
 #define CYRF_DEV_RST_PIN			GPIO0							/**< The RST GPIO pin */
 #define CYRF_DEV_RST_CLK			RCC_APB2ENR_IOPBEN				/**< The RST GPIO clock */

@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2015 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2017 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,21 +17,13 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PROTOCOL_H_
-#define PROTOCOL_H_
+#ifndef MODULES_ANT_SWITCH_H_
+#define MODULES_ANT_SWITCH_H_
 
-struct protocol_t {
-  char *name;
-  void (*init)(void);
-  void (*deinit)(void);
-  void (*start)(void);
-  void (*stop)(void);
-  void (*run)(void);
-  void (*status)(void);
-  void (*parse_arg)(uint8_t*, uint16_t, uint16_t, uint16_t);
-};
+#include <stdbool.h>
 
-void protocol_init(void);
-void protocol_run(void);
+/* External functions for the antenna swither */
+void ant_switch_init(void);
+void ant_switch(bool *state);
 
-#endif /* PROTOCOL_H_ */
+#endif /* MODULES_ANT_SWITCH_H_ */

@@ -17,15 +17,11 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DSM_SCANNER_H_
-#define DSM_SCANNER_H_
+#ifndef CYRF_SCANNER_H_
+#define CYRF_SCANNER_H_
 
 #include "modules/protocol.h"
 
-extern struct protocol_t protocol_dsm_scanner;
-void protocol_dsm_scanner_start(void);
-void protocol_dsm_scanner_stop(void);
-void protocol_dsm_scanner_run(void);
-void protocol_dsm_scanner_status(void);
+extern struct protocol_t protocol_cyrf_scanner;
 
-#endif /* DSM_SCANNER_H_ */
+#endif /* CYRF_SCANNER_H_ */

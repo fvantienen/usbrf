@@ -20,8 +20,10 @@
 #ifndef BOARD_H_
 #define BOARD_H_
 
-#ifdef BOARD_V1_0
+#if defined(BOARD_V1_0)
 #include "boards/board_v1.0.h"
+#elif defined(BOARD_V2_0)
+#include "boards/board_v2.0.h"
 #else
 #include "boards/board_v0.1.h"
 #endif

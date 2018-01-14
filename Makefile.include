@@ -22,6 +22,9 @@ BOARD?=2
 ifeq ($(BOARD),2)
 	CFLAGS += -DBOARD_V1_0
 endif
+ifeq ($(BOARD),3)
+	CFLAGS += -DBOARD_V2_0
+endif
 
 # Set bootloader enabled and load script
 PROJECT_TLD ?= ..
@@ -49,10 +52,10 @@ endif
 endif
 
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m3 -msoft-float
-CFLAGS		+= -Os -g -std=c11 -pedantic \
+CFLAGS		+= -Os -g -std=c11 \
 		   -Wall -Wextra -Wimplicit-function-declaration \
 		   -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes \
-		   -Wundef -Wshadow \
+		   -Wundef -Wshadow -Wno-pedantic \
 		   -I$(TOOLCHAIN_DIR)/include \
 		   -fno-common $(ARCH_FLAGS) -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
