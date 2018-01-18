@@ -26,13 +26,13 @@
 /* All times are in microseconds divided by 10 */
 #define DSM_BIND_RECV_TIME			1000		/**< Time before timeout when receiving bind packets */
 #define DSM_SYNC_RECV_TIME			2000		/**< Time before timeout when trying to sync */
-#define DSM_SYNC_FRECV_TIME			10000		/**< Time before timeout when trying to sync first packet of DSMX (bigger then bind sending) */
-#define DSM_RECV_TIME				    2200		/**< Time before timeout when trying to receive */
-#define DSM_RECV_TIME_SHORT			800			/**< Time before timeout when trying to receive between two channels */
-#define DSM_RECV_TIME_DATA			1000		/**< Time before timeout when waiting for data packet (MITM) */
+#define DSM_RECV_TIME_A			    2000		/**< Time before timeout when trying to receive channel A */
+#define DSM_RECV_TIME_A_SHORT		900			/**< Time before timeout when trying to receive channel A */
+#define DSM_RECV_TIME_B					700			/**< Time before timeout when trying to receive between B */
 
 #define DSM_BIND_SEND_TIME			1000		/**< Time between sending bind packets */
 #define DSM_SEND_TIME				    2200		/**< Time between sending both Channel A and Channel B */
+#define DSM_SEND_TIME_SHORT			1100		/**< Time between sending both Channel A and Channel B */
 #define DSM_CHA_CHB_SEND_TIME		400			/**< Time between Channel A and Channel B send */
 
 /* The maximum channekl number for DSM2 and DSMX */

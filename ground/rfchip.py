@@ -27,6 +27,8 @@ class RFChip():
 		for prot in self.protocols:
 			if prot.name == prot_name:
 				prot.state = val
+				return prot
+		return None
 
 	def parse_recv_msg(self, msg):
 		"""Parse a received message and return a possible TX object"""
@@ -77,7 +79,12 @@ class CYRF6936(RFChip):
 		for i in range(dev_cnt):
 			print(len(channels[i]))
 			scan_data = self.generate_scan_data(channels[i])
-			devices[0].prot_exec(0, 1, scan_data) #FIXME ID
+			devices[i].prot_exec(0, 1, scan_data) #FIXME ID
+
+	def start_hacking(self, device, tx):
+		"""Start hacking the transmitter"""
+		hack_data = self.generate_hack_data(tx)
+		device.prot_exec(1, 1, hack_data)
 
 	def divide_channels(self, cnt):
 		"""Divide the channels into cnt pieces for scanning"""
@@ -93,6 +100,18 @@ class CYRF6936(RFChip):
 			# 0: channel, 1: row, 2: column
 			struct.pack_into("<BB", data, idx, channel[0], channel[1] << 4 | channel[2])
 			idx += 2
+		return data
+
+	def generate_hack_data(self, tx):
+		"""Generate data for hacking"""
+		data = bytearray(7)
+		if not tx.dsmx:
+			tx_chans = []
+			for chan in tx.channels:
+				tx_chans.append(chan)
+			struct.pack_into("<BBBBBBB", data, 0, 0, tx.id[0], tx.id[1], tx.id[2], tx.id[3], tx_chans[0], tx_chans[1])
+		else:
+			struct.pack_into("<BBBBBBB", data, 0, 1, tx.id[0], tx.id[1], tx.id[2], tx.id[3], 0, 0)
 		return data
 
 	@staticmethod

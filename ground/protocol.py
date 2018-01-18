@@ -30,7 +30,7 @@ class Protocol():
 
 
 class DSMX(Protocol):
-	CHAN_TIME = 11000											# Amount of time before reapearance per channel (us)
+	CHAN_TIME = 9000*(23+1)								# Amount of time before reapearance per channel (us)
 	CHAN_USED = 23												# Amount of channels in used
 	CHAN_MIN = 3													# Lowest occuring channel number
 	CHAN_MAX = 76													# Highest occuring channel number
@@ -112,7 +112,7 @@ class DSMX(Protocol):
 		return channels
 
 class DSM2(Protocol):
-	CHAN_TIME = 11000											# Amount of time before reapearance per channel (us)
+	CHAN_TIME = 20000*1.5									# Amount of time before reapearance per channel (us)
 	CHAN_USED = 2													# Amount of channels in used
 	CHAN_MIN = 0													# Lowest occuring channel number
 	CHAN_MAX = 79													# Highest occuring channel number
@@ -148,7 +148,7 @@ class DSM2(Protocol):
 			crc_seeds = rfchip.CYRF6936.find_crc_seed(msg[:-4], crc)
 			if len(crc_seeds) == 1:
 				crc_seed = crc_seeds.pop()
-				id = [crc_seed & 0xFF, crc_seed >> 8, msg[1], msg[2]]
+				id = [crc_seed & 0xFF, crc_seed >> 8, (~msg[1]) & 0xFF, (~msg[2]) & 0xFF]
 				return transmitter.DSMTransmitter(id, False, msg)
 			elif len(crc_seeds) > 1:
 				print "Multiple crc seeds " + str(len(crc_seeds))

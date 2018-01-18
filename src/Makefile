@@ -24,7 +24,7 @@ OBJS += modules/led.o modules/button.o modules/timer.o modules/cdcacm.o modules/
 OBJS += modules/ring.o modules/counter.o modules/ant_switch.o modules/pprzlink.o modules/protocol.o helper/dsm.o
 
 # The different kind of protocols available
-OBJS += protocol/cyrf_scanner.o
+OBJS += protocol/cyrf_scanner.o protocol/dsm_hack.o
 
 # Enable pprzlink
 PPRZLINK = 1

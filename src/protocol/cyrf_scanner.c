@@ -57,7 +57,7 @@ static void protocol_cyrf_scanner_receive(bool error);
 static void protocol_cyrf_scanner_next(void);
 
 /* Internal variables */
-static uint8_t *cyrf_scan_args = NULL;
+static uint8_t *cyrf_scan_args = NULL;			//*< Channel, pn_row<<4 | pn_col
 static uint16_t cyrf_scan_args_len = 0;
 static uint16_t cyrf_scan_idx = 0;
 
@@ -72,6 +72,10 @@ static void protocol_cyrf_scanner_init(void) {
 #ifdef CYRF_DEV_ANT
 	// Switch the antenna to the CYRF
 	bool ant_state[] = CYRF_DEV_ANT;
+#ifdef CLOSEBY_SCAN
+	ant_state[0] = !ant_state[0];
+	ant_state[1] = !ant_state[1];
+#endif
 	ant_switch(ant_state);
 #endif
 
@@ -88,6 +92,7 @@ static void protocol_cyrf_scanner_init(void) {
 	// Set the callbacks
 	timer1_register_callback(protocol_cyrf_scanner_timer);
 	cyrf_register_recv_callback(protocol_cyrf_scanner_receive);
+	cyrf_register_send_callback(NULL);
 
 	console_print("\r\nCYRF Scanner initialized 0x%02X 0x%02X 0x%02X 0x%02X", mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3]);
 }
@@ -116,9 +121,9 @@ static void protocol_cyrf_scanner_start(void) {
 
 	// Short or long time based on DSM2/DSMX channel
 	if(channel%5 == row_col >> 4)
-		timer1_set(DSM_RECV_TIME*2); // DSM2
+		timer1_set(DSM_RECV_TIME_A*2); // DSM2
 	else
-		timer1_set(DSM_RECV_TIME*(DSM_MAX_USED_CHANNELS+1)/4); //DSMX
+		timer1_set(DSM_RECV_TIME_A_SHORT*(DSM_MAX_USED_CHANNELS+1)); //DSMX
 	console_print("\r\nCYRF Scanner started...");
 }
 
@@ -181,24 +186,25 @@ static void protocol_cyrf_scanner_timer(void) {
 
 	uint8_t channel = cyrf_scan_args[cyrf_scan_idx*2];
 	uint8_t row_col = cyrf_scan_args[cyrf_scan_idx*2+1];
-	console_print("\r\nScanning at index %d at channel %d [%d, %d]", cyrf_scan_idx, channel, row_col >> 4, row_col & 0xF);
+	//console_print("\r\nScanning at index %d at channel %d [%d, %d]", cyrf_scan_idx, channel, row_col >> 4, row_col & 0xF);
 
 	if(channel%5 == row_col >> 4)
-		timer1_set(DSM_RECV_TIME*2); // DSM2
+		timer1_set(DSM_RECV_TIME_A*1.5); // DSM2
 	else
-		timer1_set(DSM_RECV_TIME*(DSM_MAX_USED_CHANNELS+1)/4); //DSMX
+		timer1_set(DSM_RECV_TIME_A_SHORT*(DSM_MAX_USED_CHANNELS+1)); //DSMX
 }
 
 static void protocol_cyrf_scanner_receive(bool error) {
-	uint8_t packet_length, packet[21], rx_status, i;
+	uint8_t packet_length, packet[21], rx_status, i, rx_err;
 
 	// Get the receive count, rx_status and the packet
 	packet_length = cyrf_read_register(CYRF_RX_COUNT);
 	rx_status = cyrf_get_rx_status();
+	rx_err = rx_status & (CYRF_RX_ACK|CYRF_PKT_ERR|CYRF_EOP_ERR);
 	cyrf_recv_len(&packet[1], packet_length);
 
-	// Since we are only waiting for packets for DSM length, ignore the rest
-	if(packet_length == 16) {
+	// Since we are only waiting for packets for DSM length, ignore the rest also invalid
+	if(packet_length == 16 && (!error || !rx_err)) {
 		// Get the CRC
 		packet[17] = cyrf_read_register(CYRF_RX_CRC_LSB);
 		packet[18] = cyrf_read_register(CYRF_RX_CRC_MSB);

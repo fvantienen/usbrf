@@ -83,5 +83,6 @@
 #define TIMER1_NVIC				NVIC_TIM2_IRQ			/**< The DSM timer NVIC */
 #define TIMER1_IRQ				tim2_isr					/**< The DSM timer function interrupt */
 
+#define CLOSEBY_SCAN 1
 
 #endif /* BOARD_V2_0_H_ */

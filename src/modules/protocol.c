@@ -23,10 +23,12 @@
 #include "protocol.h"
 #include "console.h"
 #include "pprzlink.h"
+
 #include "protocol/cyrf_scanner.h"
+#include "protocol/dsm_hack.h"
 
 /* All protocols */
-static struct protocol_t *protocols[] = { &protocol_cyrf_scanner };
+static struct protocol_t *protocols[] = { &protocol_cyrf_scanner, &protocol_dsm_hack };
 static const int protocols_nb = sizeof(protocols) / sizeof(protocols[0]);
 static int protocol_cur_idx;
 static bool protocol_running;

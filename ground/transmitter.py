@@ -6,10 +6,14 @@ class Transmitter():
 
 	def __init__(self):
 		self.prot_name = "UNK"
-		self.attackable = False
+		self.hackable = False
+		self.do_hack = True
 		self.recv_data = []
 		self.recv_cnt = 0
 		self.channel_values = {}
+
+		for i in range(20):
+			self.channel_values[i] = 0
 
 class DSMTransmitter(Transmitter):
 
@@ -49,7 +53,7 @@ class DSMTransmitter(Transmitter):
 		self.update_channels(data)
 
 		# Check if we can attack
-		self.check_attack()
+		self.check_hackable()
 
 	def is_same(self, other):
 		"""Check if the transmitter is similar or not based on ID or inverse ID"""
@@ -66,18 +70,33 @@ class DSMTransmitter(Transmitter):
 		"""Return the inverse of the current id (only bytes 0, 1 because of checksum)"""
 		return [(~self.id[0]) & 0xFF, (~self.id[1]) & 0xFF, self.id[2], self.id[3]]
 
-	def check_attack(self):
+	def start_hacking(self, device):
+		"""Start hacking the transmitter"""
+		self.rfchip.start_hacking(device, self)
+
+	def check_hackable(self):
 		"""Check if we are able to attack the device and thus have enough information"""
 		if not self.dsmx and len(self.channels) == 2:
-			self.attackable = True
+			# Check the latest message and verify the sop_column calculation
+			sop_col_n = (self.id[0] + self.id[1] + self.id[2] + 2) & 0x7
+			sop_col_i = (~self.id[0] + ~self.id[1] + self.id[2] + 2) & 0x7
+			last_sop_col = self.recv_data[-1][20] & 0xF
+
+			# Check if we can make a decision or not based on the analyzed data
+			if (sop_col_n != last_sop_col and sop_col_i == last_sop_col):
+				self.id = self.inverse_id()
+				self.hackable = True
+			elif (sop_col_n == last_sop_col and sop_col_i != last_sop_col):
+				self.hackable = True
+
 		elif self.dsmx:
 			# Check if the channels are correct for the ID
 			calc_channels_n = set(protocol.DSMX.calc_channels(self.id))
 			calc_channels_i = set(protocol.DSMX.calc_channels(self.inverse_id()))
 			diff_channels_n = self.channels - calc_channels_n
 			diff_channels_i = self.channels - calc_channels_i
-			print calc_channels_n
-			print calc_channels_i
+			#print calc_channels_n
+			#print calc_channels_i
 
 			# Check the latest message and verify the sop_column calculation
 			sop_col_n = (self.id[0] + self.id[1] + self.id[2] + 2) & 0x7
@@ -87,9 +106,9 @@ class DSMTransmitter(Transmitter):
 			# Check if we can make a decision or not based on the analyzed data
 			if (sop_col_n != last_sop_col and sop_col_i == last_sop_col) or (len(diff_channels_n) > 0 and len(diff_channels_i) == 0):
 				self.id = self.inverse_id()
-				self.attackable = True
+				self.hackable = True
 			elif (sop_col_n == last_sop_col and sop_col_i != last_sop_col) or (len(diff_channels_n) == 0 and len(diff_channels_i) > 0):
-				self.attackable = True
+				self.hackable = True
 
 	def get_resolution(self):
 		"""Get the resolution of set, else return a guess based on received values"""
@@ -99,7 +118,7 @@ class DSMTransmitter(Transmitter):
 		# Use the guessed resolution now
 		# TODO make better ( we now only check if at least we received the lowest 6 channels in 10bit)
 		if (self.bm_10bit & 0x3f) ^ 0x3f == 0:
-			return 10
+			return 11 #FIXME
 		else:
 			return 11
 
@@ -125,7 +144,7 @@ class DSMTransmitter(Transmitter):
 			channel_data = data[3+i*2 : 5+i*2] # Skip length and ID
 			channel = self.decode_channel(channel_data, resolution)
 			if channel != None:
-				self.channel_values[channel[0]] = channel[1]
+				self.channel_values[channel[0]] = float(channel[1]) / (1 << resolution)*100
 
 class TransmitterManager():
 
@@ -133,12 +152,13 @@ class TransmitterManager():
 		self.transmitters = []
 		self._on_change = None
 
-	def add_or_merge(self, new_tx):
+	def add_or_merge(self, new_tx, rfchip):
 		"""Add or merge a new transmitter"""
+		new_tx.rfchip = rfchip
 		for tx in self.transmitters:
 			if tx.is_same(new_tx):
 				tx.merge(new_tx)
-				print tx.channels
+				#print tx.channels
 				self.on_change()
 				return
 
@@ -148,6 +168,11 @@ class TransmitterManager():
 	def clear(self):
 		self.transmitters = []
 		self.on_change()
+
+	def hack_toggle(self, prot_name, txid_str):
+		for tx in self.transmitters:
+			if tx.prot_name == prot_name and tx.get_id_str() == txid_str:
+				tx.do_hack = not tx.do_hack
 
 	def on_change(self):
 		if self._on_change != None:
