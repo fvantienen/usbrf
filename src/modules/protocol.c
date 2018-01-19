@@ -27,11 +27,13 @@
 #include "protocol/cyrf_scanner.h"
 #include "protocol/dsm_hack.h"
 
-/* All protocols */
+/* All protocol information */
 static struct protocol_t *protocols[] = { &protocol_cyrf_scanner, &protocol_dsm_hack };
 static const int protocols_nb = sizeof(protocols) / sizeof(protocols[0]);
 static int protocol_cur_idx;
 static bool protocol_running;
+uint16_t protocol_rc_chan[16];					//*< The received rc channels */
+uint8_t protocol_rc_chan_nb;						//*< The amount of received rc channels */ 
 
 /* Console commands */
 static void protocol_cmd_list(char *cmdLine);
@@ -42,6 +44,7 @@ static void protocol_cmd_status(char *cmdLine);
 
 /* PPRZ bindings */
 static void protocol_pprz_exec(uint8_t *data);
+static void protocol_pprz_rc_data(uint8_t *data);
 
 /**
  * Initialize all protocols
@@ -50,6 +53,7 @@ void protocol_init(void) {
   // Set the current protocol
   protocol_cur_idx = -1;
   protocol_running = false;
+  protocol_rc_chan_nb = 0;
 
   // Add console commands
   console_cmd_add("plist", "", protocol_cmd_list);
@@ -60,6 +64,7 @@ void protocol_init(void) {
 
   // Add PPRZ bindings
   pprzlink_register_cb(PPRZ_MSG_ID_PROT_EXEC, protocol_pprz_exec);
+  pprzlink_register_cb(PPRZ_MSG_ID_RC_DATA, protocol_pprz_rc_data);
 }
 
 /**
@@ -182,7 +187,8 @@ static void protocol_pprz_exec(uint8_t *data) {
 	}
 
 	// Check if the protocol is running
-	if(protocol_running) {
+	uint8_t type = DL_PROT_EXEC_type(data);
+	if((type == PROTOCOL_START || type == PROTOCOL_STOP) && protocol_running) {
 		protocols[protocol_cur_idx]->stop();
 		protocol_running = false;
 	}
@@ -192,11 +198,24 @@ static void protocol_pprz_exec(uint8_t *data) {
 	uint16_t arg_size = DL_PROT_EXEC_arg_size(data);
 	uint8_t arg_len = DL_PROT_EXEC_arg_data_length(data);
 	if((arg_size-arg_offset) > 0 && protocols[protocol_cur_idx]->parse_arg != NULL)
-		protocols[protocol_cur_idx]->parse_arg(DL_PROT_EXEC_arg_data(data), arg_len, arg_offset, arg_size);
+		protocols[protocol_cur_idx]->parse_arg(type, DL_PROT_EXEC_arg_data(data), arg_len, arg_offset, arg_size);
 
 	// Start the protocol if the arguments are succesfully received
-	if(arg_offset+arg_len >= arg_size) {
+	if(type == PROTOCOL_START && arg_offset+arg_len >= arg_size) {
 		protocols[protocol_cur_idx]->start();
 		protocol_running = true;
 	}
+}
+
+/**
+ * Whenever we receive rc data through pprzlink
+ */
+static void protocol_pprz_rc_data(uint8_t *data) {
+	uint8_t chan_nb = DL_RC_DATA_data_length(data);
+	uint16_t *channels = DL_RC_DATA_data(data);
+	if(chan_nb > 16)
+		chan_nb = 16;
+
+	protocol_rc_chan_nb = chan_nb;
+	memcpy(protocol_rc_chan, channels, chan_nb*sizeof(uint16_t));
 }

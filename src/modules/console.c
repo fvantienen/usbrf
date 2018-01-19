@@ -146,7 +146,8 @@ void console_print(const char *format, ...) {
  */
 static int console_cmd_cmp(const void *c1, const void *c2) {
   const console_cmd_t *cmd1 = c1, *cmd2 = c2;
-  return strncasecmp(cmd1->name, cmd2->name, strlen(cmd2->name));
+  size_t len = strlen(cmd1->name) > strlen(cmd2->name)? strlen(cmd1->name) : strlen(cmd2->name);
+  return strncasecmp(cmd1->name, cmd2->name, len);
 }
 
 /**

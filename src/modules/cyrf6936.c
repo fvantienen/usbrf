@@ -19,10 +19,11 @@
 
 #include <unistd.h>
 #include <libopencm3/cm3/common.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/cortex.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/spi.h>
-#include <libopencm3/stm32/f1/nvic.h>
 #include <libopencm3/stm32/exti.h>
 
 #include "cyrf6936.h"
@@ -33,7 +34,6 @@
 /* The CYRF receive and send callbacks */
 cyrf_on_event _cyrf_recv_callback = NULL;
 cyrf_on_event _cyrf_send_callback = NULL;
-volatile bool cyrf_busy = false;
 
 /* The pin for selecting the device */
 #define CYRF_CS_HI() gpio_set(CYRF_DEV_SS_PORT, CYRF_DEV_SS_PIN)
@@ -73,6 +73,7 @@ void cyrf_init(void) {
 	exti_enable_request(CYRF_DEV_IRQ_EXTI);
 
 	// Enable the IRQ NVIC
+	nvic_set_priority(CYRF_DEV_IRQ_NVIC, 1);
 	nvic_enable_irq(CYRF_DEV_IRQ_NVIC);
 #endif
 
@@ -135,7 +136,6 @@ void CYRF_DEV_IRQ_ISR(void) {
  * Process the CYRF requests */
 static void cyrf_process(void) {
 	uint8_t tx_irq_status, rx_irq_status;
-	timer1_wait(true);
 
 	// Read the transmit IRQ
 	tx_irq_status = cyrf_read_register(CYRF_TX_IRQ_STATUS);
@@ -155,8 +155,6 @@ static void cyrf_process(void) {
 		cyrf_write_register(CYRF_RX_IRQ_STATUS, 0x80); // need to set RXOW before data read
 		_cyrf_recv_callback((rx_irq_status & CYRF_RXE_IRQ) > 0x0);
 	}
-
-	timer1_wait(false);
 }
 
 /**
@@ -181,10 +179,12 @@ void cyrf_register_send_callback(cyrf_on_event callback) {
  * @param[in] data The one byte data that needs to be written to the address
  */
 void cyrf_write_register(const uint8_t address, const uint8_t data) {
+	cm_disable_interrupts();
 	CYRF_CS_LO();
 	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
 	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data);
 	CYRF_CS_HI();
+	cm_enable_interrupts();
 }
 
 /**
@@ -195,6 +195,7 @@ void cyrf_write_register(const uint8_t address, const uint8_t data) {
  */
 void cyrf_write_block(const uint8_t address, const uint8_t data[], const int length) {
 	int i;
+	cm_disable_interrupts();
 	CYRF_CS_LO();
 	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
 
@@ -202,6 +203,7 @@ void cyrf_write_block(const uint8_t address, const uint8_t data[], const int len
 		spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data[i]);
 
 	CYRF_CS_HI();
+	cm_enable_interrupts();
 }
 
 /**
@@ -211,10 +213,12 @@ void cyrf_write_block(const uint8_t address, const uint8_t data[], const int len
  */
 uint8_t cyrf_read_register(const uint8_t address) {
 	uint8_t data;
+	cm_disable_interrupts();
 	CYRF_CS_LO();
 	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
 	data = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
 	CYRF_CS_HI();
+	cm_enable_interrupts();
 	return data;
 }
 
@@ -226,6 +230,7 @@ uint8_t cyrf_read_register(const uint8_t address) {
  */
 void cyrf_read_block(const uint8_t address, uint8_t data[], const int length) {
 	int i;
+	cm_disable_interrupts();
 	CYRF_CS_LO();
 	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
 
@@ -233,6 +238,7 @@ void cyrf_read_block(const uint8_t address, uint8_t data[], const int length) {
 		data[i] = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
 
 	CYRF_CS_HI();
+	cm_enable_interrupts();
 }
 
 /**

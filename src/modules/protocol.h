@@ -28,8 +28,16 @@ struct protocol_t {
   void (*stop)(void);
   void (*run)(void);
   void (*status)(void);
-  void (*parse_arg)(uint8_t*, uint16_t, uint16_t, uint16_t);
+  void (*parse_arg)(uint8_t, uint8_t*, uint16_t, uint16_t, uint16_t);
 };
+
+enum protocol_exec_type_t {
+	PROTOCOL_STOP = 0,
+	PROTOCOL_START,
+	PROTOCOL_EXTRA,
+};
+extern uint16_t protocol_rc_chan[16];
+extern uint8_t protocol_rc_chan_nb;
 
 void protocol_init(void);
 void protocol_run(void);

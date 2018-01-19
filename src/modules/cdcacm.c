@@ -356,7 +356,7 @@ static void cdcacm_init_vbus(void) {
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, USB_DETACH_CLK);
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, USB_VBUS_CLK);
 
-	nvic_set_priority(USB_VBUS_IRQ, (14 << 4));
+	nvic_set_priority(USB_VBUS_IRQ, 3);
 	nvic_enable_irq(USB_VBUS_IRQ);
 
 	gpio_set(USB_VBUS_PORT, USB_VBUS_PIN);
@@ -395,7 +395,7 @@ void cdcacm_init(void) {
 
 	usbd_register_set_config_callback(cdcacm_usbd_dev, cdcacm_set_config_callback);
 
-	nvic_set_priority(NVIC_USB_LP_CAN_RX0_IRQ, (2 << 4));
+	nvic_set_priority(NVIC_USB_LP_CAN_RX0_IRQ, 3);
 	nvic_enable_irq(NVIC_USB_LP_CAN_RX0_IRQ);
 
 #ifdef USB_VBUS_PORT

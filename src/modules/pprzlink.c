@@ -37,6 +37,9 @@ uint8_t pprzlink_get_byte(struct pprzlink_t *link);
 void pprzlink_init(void) {
 	pprz_transport_init(&pprzlink.tp);
 
+  for(uint16_t i = 0; i < 256; i++)
+    pprzlink.msg_cb[i] = NULL;
+
   pprzlink.dev.check_free_space = (check_free_space_t) pprzlink_check_free_space;
   pprzlink.dev.put_byte = (put_byte_t) pprzlink_put_byte;
   pprzlink.dev.put_buffer = (put_buffer_t) pprzlink_put_buffer;

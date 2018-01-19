@@ -30,7 +30,7 @@ class Protocol():
 
 
 class DSMX(Protocol):
-	CHAN_TIME = 9000*(23+1)								# Amount of time before reapearance per channel (us)
+	CHAN_TIME = 8500*23								# Amount of time before reapearance per channel (us)
 	CHAN_USED = 23												# Amount of channels in used
 	CHAN_MIN = 3													# Lowest occuring channel number
 	CHAN_MAX = 76													# Highest occuring channel number
@@ -112,7 +112,7 @@ class DSMX(Protocol):
 		return channels
 
 class DSM2(Protocol):
-	CHAN_TIME = 20000*1.5									# Amount of time before reapearance per channel (us)
+	CHAN_TIME = 19500*1.5									# Amount of time before reapearance per channel (us)
 	CHAN_USED = 2													# Amount of channels in used
 	CHAN_MIN = 0													# Lowest occuring channel number
 	CHAN_MAX = 79													# Highest occuring channel number

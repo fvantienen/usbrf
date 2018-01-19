@@ -37,7 +37,7 @@ static void protocol_cyrf_scanner_start(void);
 static void protocol_cyrf_scanner_stop(void);
 static void protocol_cyrf_scanner_run(void);
 static void protocol_cyrf_scanner_status(void);
-static void protocol_cyrf_scanner_parse_arg(uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len);
+static void protocol_cyrf_scanner_parse_arg(uint8_t type, uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len);
 
 /* Main protocol structure */
 struct protocol_t protocol_cyrf_scanner = {
@@ -101,9 +101,13 @@ static void protocol_cyrf_scanner_init(void) {
  * Deinitialize the variables
  */
 static void protocol_cyrf_scanner_deinit(void) {
-	if(cyrf_scan_args != NULL)
-		free(cyrf_scan_args);
+	timer1_register_callback(NULL);
+	cyrf_register_recv_callback(NULL);
 
+	if(cyrf_scan_args != NULL) {
+		free(cyrf_scan_args);
+		cyrf_scan_args = NULL;
+	}
 	console_print("\r\nCYRF Scanner deinitialized");
 }
 
@@ -121,9 +125,9 @@ static void protocol_cyrf_scanner_start(void) {
 
 	// Short or long time based on DSM2/DSMX channel
 	if(channel%5 == row_col >> 4)
-		timer1_set(DSM_RECV_TIME_A*2); // DSM2
+		timer1_set(DSM_RECV_TIME_A*1.5); // DSM2
 	else
-		timer1_set(DSM_RECV_TIME_A_SHORT*(DSM_MAX_USED_CHANNELS+1)); //DSMX
+		timer1_set(DSM_RECV_TIME_A_SHORT*DSM_MAX_USED_CHANNELS); //DSMX
 	console_print("\r\nCYRF Scanner started...");
 }
 
@@ -159,7 +163,11 @@ static void protocol_cyrf_scanner_status(void) {
 /**
  * Parse arguments given to the scanner
  */
-static void protocol_cyrf_scanner_parse_arg(uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len) {
+static void protocol_cyrf_scanner_parse_arg(uint8_t type, uint8_t *arg, uint16_t len, uint16_t offset, uint16_t tot_len) {
+	// Only parse arguments when starting
+	if(type != PROTOCOL_START)
+		return;
+
 	// Allocate the arguments if needed
 	if(cyrf_scan_args == NULL) {
 		cyrf_scan_args = malloc(tot_len);
@@ -191,7 +199,7 @@ static void protocol_cyrf_scanner_timer(void) {
 	if(channel%5 == row_col >> 4)
 		timer1_set(DSM_RECV_TIME_A*1.5); // DSM2
 	else
-		timer1_set(DSM_RECV_TIME_A_SHORT*(DSM_MAX_USED_CHANNELS+1)); //DSMX
+		timer1_set(DSM_RECV_TIME_A_SHORT*DSM_MAX_USED_CHANNELS); //DSMX
 }
 
 static void protocol_cyrf_scanner_receive(bool error) {

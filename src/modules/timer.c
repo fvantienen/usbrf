@@ -28,8 +28,6 @@
 
 /* The timer callbacks */
 timer_on_event timer1_on_event = NULL;
-volatile bool timer1_triggered = false;
-volatile bool timer1_waiting = false;
 uint16_t timer1_value;
 
 /**
@@ -40,7 +38,7 @@ static void timer1_init(void) {
 
 	// Enable the timer NVIC
 	nvic_enable_irq(TIMER1_NVIC);
-	nvic_set_priority(TIMER1_NVIC, 1);
+	nvic_set_priority(TIMER1_NVIC, 0);
 
 	// Setup the timer
 	timer_disable_counter(TIMER1);
@@ -110,22 +108,6 @@ void timer1_stop(void) {
 }
 
 /**
- * Wait with timer events
- */
-void timer1_wait(bool wait) {
-	if(wait) {
-		timer1_triggered = false;
-		timer1_waiting = true;
-	}
-	else {
-		if(timer1_triggered)
-			timer1_on_event();
-		timer1_triggered = false;
-		timer1_waiting = false;
-	}
-}
-
-/**
  * Register timer1 callback
  * @param[in] callback The callback function when an interrupt occurs
  */
@@ -141,8 +123,5 @@ void TIMER1_IRQ(void) {
 	timer1_stop();
 
 	// Callback
-	if (!timer1_waiting && timer1_on_event != NULL)
-		timer1_on_event();
-	else if(timer1_on_event)
-		timer1_triggered = true;
+	timer1_on_event();
 }

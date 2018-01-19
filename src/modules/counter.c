@@ -25,13 +25,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/systick.h>
 
 #include "counter.h"
 
 /* Configuration */
-#define COUNTER_FREQ 1000000 /* Counter interval of 1ms */
+#define COUNTER_FREQ 25000 /* Counter interval of 0.04ms */
 
 /* Private variables. */
 
@@ -65,11 +66,9 @@ void counter_init(void)
    * XXX: Move to the HAL.
    */
   systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
-
-  systick_set_reload((rcc_ahb_frequency / 8) / COUNTER_FREQ);
-
+  systick_set_reload((rcc_ahb_frequency / 8) / COUNTER_FREQ - 1);
+  nvic_set_priority(NVIC_SYSTICK_IRQ, 2);
   systick_interrupt_enable();
-
   systick_counter_enable();
 
   /* Mark that we are done initializing. */
@@ -77,7 +76,6 @@ void counter_init(void)
 }
 
 /* Interrupt handlers */
-void sys_tick_handler(void);
 void sys_tick_handler(void)
 {
   counter_status.ticks++;
