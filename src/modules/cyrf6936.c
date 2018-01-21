@@ -28,7 +28,6 @@
 #include "cyrf6936.h"
 #include "modules/counter.h"
 #include "modules/config.h"
-#include "modules/timer.h"
 #include "modules/spi.h"
 
 /* The CYRF receive and send callbacks */

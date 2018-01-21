@@ -20,7 +20,7 @@
 BINARY = usbrf
 
 # The modules and helpers used for the usbrf module
-OBJS += modules/led.o modules/spi.o modules/button.o modules/timer.o modules/cdcacm.o modules/cyrf6936.o modules/config.o
+OBJS += modules/led.o modules/spi.o modules/button.o modules/timer.o modules/cdcacm.o modules/cyrf6936.o modules/cc2500.o modules/config.o
 OBJS += modules/console.o modules/ring.o modules/counter.o modules/ant_switch.o modules/pprzlink.o modules/protocol.o helper/dsm.o
 
 # The different kind of protocols available

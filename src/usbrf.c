@@ -31,6 +31,7 @@
 #include "modules/counter.h"
 #include "modules/ant_switch.h"
 #include "modules/cyrf6936.h"
+#include "modules/cc2500.h"
 #include "modules/console.h"
 #include "modules/pprzlink.h"
 #include "modules/protocol.h"
@@ -55,6 +56,7 @@ int main(void) {
 	ant_switch_init();
 	spi_init();
 	cyrf_init();
+	cc_init();
 	console_init();
 	pprzlink_init();
 	protocol_init();
@@ -65,6 +67,7 @@ int main(void) {
 	/* The main loop */
 	while (1) {
 		cyrf_run();
+		cc_run();
 		cdcacm_run();
 		pprzlink_run();
 		console_run();
