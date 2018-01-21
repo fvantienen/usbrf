@@ -21,9 +21,7 @@
   * from the open-bldc project.
   */
 
-#include <stdint.h>
-
-#include "../modules/ring.h"
+#include "ring.h"
 
 /**
  * Initialize a ring buffer structure. You have to pass an alocated piece of

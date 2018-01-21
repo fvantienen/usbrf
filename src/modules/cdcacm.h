@@ -21,7 +21,7 @@
 #define MODULES_CDCACM_H_
 
 // Include the board specifications for the USB define
-#include "../board.h"
+#include "board.h"
 
 extern struct ring cdcacm_data_tx;
 extern struct ring cdcacm_data_rx;

@@ -24,7 +24,7 @@
 #include <libopencm3/stm32/f1/nvic.h>
 
 #include "button.h"
-#include "config.h"
+#include "modules/config.h"
 
 // Bind button pressed callback
 button_pressed_callback button_pressed_bind = NULL;

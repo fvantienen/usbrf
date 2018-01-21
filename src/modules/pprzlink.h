@@ -17,8 +17,8 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PPRZLINK_H_
-#define PPRZLINK_H_
+#ifndef MODULES_PPRZLINK_H_
+#define MODULES_PPRZLINK_H_
 
 #define FALSE 0
 #include "pprzlink/pprz_transport.h"
@@ -43,4 +43,4 @@ void pprzlink_init(void);
 void pprzlink_run(void);
 void pprzlink_register_cb(uint8_t msg_id, msg_cb_t cb);
 
-#endif /* PPRZLINK_H_ */
+#endif /* MODULES_PPRZLINK_H_ */

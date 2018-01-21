@@ -21,7 +21,7 @@
 #define MODULES_BUTTON_H_
 
 // Include the board specifications for the buttons
-#include "../board.h"
+#include "board.h"
 
 
 #define _(i)  i

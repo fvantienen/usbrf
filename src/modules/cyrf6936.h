@@ -20,9 +20,6 @@
 #ifndef MODULES_CYRF6936_H_
 #define MODULES_CYRF6936_H_
 
-// Include the board specifications for the CYRF define
-#include "../board.h"
-
 /* The SPI interface defines */
 enum {
     CYRF_CHANNEL    		= 0x00,

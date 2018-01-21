@@ -17,8 +17,8 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PROTOCOL_H_
-#define PROTOCOL_H_
+#ifndef MODULES_PROTOCOL_H_
+#define MODULES_PROTOCOL_H_
 
 struct protocol_t {
   char *name;
@@ -42,4 +42,4 @@ extern uint8_t protocol_rc_chan_nb;
 void protocol_init(void);
 void protocol_run(void);
 
-#endif /* PROTOCOL_H_ */
+#endif /* MODULES_PROTOCOL_H_ */

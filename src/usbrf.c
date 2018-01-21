@@ -24,6 +24,7 @@
 /* Load the modules */
 #include "modules/config.h"
 #include "modules/led.h"
+#include "modules/spi.h"
 #include "modules/button.h"
 #include "modules/timer.h"
 #include "modules/cdcacm.h"
@@ -46,12 +47,13 @@ int main(void) {
 
 	// Initialize the modules
 	config_init();
-	led_init();	
+	led_init();
 	timer_init();
 	cdcacm_init();
 	button_init();
 	counter_init();
 	ant_switch_init();
+	spi_init();
 	cyrf_init();
 	console_init();
 	pprzlink_init();

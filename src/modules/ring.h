@@ -21,8 +21,8 @@
   * from the open-bldc project.
   */
 
-#ifndef RING_H
-#define RING_H
+#ifndef MODULES_RING_H
+#define MODULES_RING_H
 
 #include <stdint.h>
 
@@ -50,4 +50,4 @@ int32_t ring_safe_write(struct ring *ring, const uint8_t * data, ring_size_t siz
 int32_t ring_read_ch(struct ring *ring, uint8_t * ch);
 int32_t ring_read(struct ring *ring, uint8_t * data, ring_size_t size);
 
-#endif /* RING_H */
+#endif /* MODULES_RING_H */

@@ -21,7 +21,7 @@ BINARY = transfer
 
 PROJECT_TLD = ../..
 
-OBJS += ../../src/modules/led.o ../../src/modules/timer.o ../../src/modules/cdcacm.o ../../src/modules/cyrf6936.o
+OBJS += ../../src/modules/led.o ../../src/modules/spi.o ../../src/modules/timer.o ../../src/modules/cdcacm.o ../../src/modules/cyrf6936.o
 OBJS += ../../src/modules/config.o ../../src/modules/ring.o ../../src/modules/counter.o
 
 LDSCRIPT = ../../stm32f103cbt6.ld

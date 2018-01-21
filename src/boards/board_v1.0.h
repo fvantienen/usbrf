@@ -61,20 +61,10 @@
 #define USB_VBUS_IRQ				NVIC_EXTI15_10_IRQ				/**< The USB VBus NVIC for the interrupt */
 
 /* Define the SPI busses */
-#define __SPI(i, j) i ## _ ## j
-#define _SPI(i, j)  __SPI(i, j)
-
-#define _SPI1_BUS					SPI1 									/**< The SPI bus */
-#define _SPI1_CLK			RCC_SPI1				/**< The SPI clock */
-#define _SPI1_SCK_PORT			GPIOA							/**< The SPI SCK port */
-#define _SPI1_SCK_PIN			GPIO5							/**< The SPI SCK pin */
-#define _SPI1_MISO_PORT			GPIOA							/**< The SPI MISO port */
-#define _SPI1_MISO_PIN			GPIO6							/**< The SPI MISO pin */
-#define _SPI1_MOSI_PORT			GPIOA							/**< The SPI MOSI port */
-#define _SPI1_MOSI_PIN			GPIO7							/**< The SPI MOSI pin */
+#define USE_SPI1				1 										/**< Enable the SPI1 bus */
 
 /* Define the CYRF6936 chip */
-#define CYRF_DEV_SPI				_SPI1							/**< The SPI bus with underscore */
+#define CYRF_DEV_SPI					SPI1							/**< The SPI bus with underscore */
 #define CYRF_DEV_SS_PORT			GPIOA							/**< The SPI SS port */
 #define CYRF_DEV_SS_PIN				GPIO4							/**< The SPI SS pin */
 #define CYRF_DEV_RST_PORT			GPIOB							/**< The RST GPIO port*/

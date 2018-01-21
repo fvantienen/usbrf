@@ -18,13 +18,12 @@
  */
 
 #include <unistd.h>
+#include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/f1/nvic.h>
 
 #include "timer.h"
-#include "config.h"
 
 /* The timer callbacks */
 timer_on_event timer1_on_event = NULL;

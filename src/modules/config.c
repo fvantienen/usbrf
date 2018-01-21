@@ -18,11 +18,12 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
-#include "console.h"
 #include <stdio.h>
 #include <string.h>
 #include <libopencm3/stm32/flash.h>
+
+#include "config.h"
+#include "modules/console.h"
 
 /* console commands */
 static void config_cmd_version(char *cmdLine);

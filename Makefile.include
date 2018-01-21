@@ -28,11 +28,13 @@ endif
 
 # Set bootloader enabled and load script
 PROJECT_TLD ?= ..
+PROJECT_SRC = $(PROJECT_TLD)/src
 PROJECT_LIB = $(PROJECT_TLD)/lib
 TOOLCHAIN_DIR = $(PROJECT_LIB)/libopencm3
 LDSCRIPT = $(PROJECT_TLD)/stm32f103cbt6.ld
 LDFLAGS += -Wl,-Ttext=0x8002000
 CFLAGS += -I$(PROJECT_TLD)/src
+VPATH += $(PROJECT_SRC)
 
 PREFIX    ?= arm-none-eabi
 CC         = $(PREFIX)-gcc

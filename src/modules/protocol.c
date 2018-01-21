@@ -20,10 +20,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "protocol.h"
-#include "console.h"
-#include "pprzlink.h"
+#include <string.h>
 
+#include "protocol.h"
+#include "modules/console.h"
+#include "modules/pprzlink.h"
 #include "protocol/cyrf_scanner.h"
 #include "protocol/dsm_hack.h"
 

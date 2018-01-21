@@ -23,13 +23,13 @@
 #include <libopencm3/cm3/cortex.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/exti.h>
 
 #include "cyrf6936.h"
-#include "counter.h"
-#include "config.h"
-#include "timer.h"
+#include "modules/counter.h"
+#include "modules/config.h"
+#include "modules/timer.h"
+#include "modules/spi.h"
 
 /* The CYRF receive and send callbacks */
 cyrf_on_event _cyrf_recv_callback = NULL;
@@ -48,20 +48,11 @@ static void cyrf_process(void);
 void cyrf_init(void) {
 	DEBUG(cyrf6936, "Initializing");
 	/* Initialize the clocks */
-	rcc_periph_clock_enable(_SPI(CYRF_DEV_SPI, CLK));
 	rcc_periph_clock_enable(CYRF_DEV_RST_CLK);
 
 	/* Initialize the GPIO */
-	gpio_set_mode(CYRF_DEV_RST_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_RST_PIN); 						//RST
-	gpio_set_mode(CYRF_DEV_SS_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_SS_PIN); 						//SS
-	gpio_set_mode(_SPI(CYRF_DEV_SPI, SCK_PORT), GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, _SPI(CYRF_DEV_SPI, SCK_PIN)); 					//SCK
-	gpio_set_mode(_SPI(CYRF_DEV_SPI, MISO_PORT), GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
-			_SPI(CYRF_DEV_SPI, MISO_PIN)); 												//MISO
-	gpio_set_mode(_SPI(CYRF_DEV_SPI, MOSI_PORT), GPIO_MODE_OUTPUT_50_MHZ,
-			GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, _SPI(CYRF_DEV_SPI, MOSI_PIN)); 				//MOSI
+	gpio_set_mode(CYRF_DEV_RST_PORT, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_RST_PIN);
+	gpio_set_mode(CYRF_DEV_SS_PORT, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, CYRF_DEV_SS_PIN);
 
 #ifdef CYRF_DEV_IRQ_PORT
 	/* Enable the IRQ */
@@ -76,27 +67,6 @@ void cyrf_init(void) {
 	nvic_set_priority(CYRF_DEV_IRQ_NVIC, 1);
 	nvic_enable_irq(CYRF_DEV_IRQ_NVIC);
 #endif
-
-	/* Reset SPI, SPI_CR1 register cleared, SPI is disabled */
-	spi_reset(_SPI(CYRF_DEV_SPI, BUS));
-
-	/* Set up SPI in Master mode with:
-	 * Clock baud rate: 1/64 of peripheral clock frequency
-	 * Clock polarity: Idle High
-	 * Clock phase: Data valid on 2nd clock pulse
-	 * Data frame format: 8-bit
-	 * Frame format: MSB First
-	 */
-	spi_init_master(_SPI(CYRF_DEV_SPI, BUS), SPI_CR1_BAUDRATE_FPCLK_DIV_64,
-			SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE, SPI_CR1_CPHA_CLK_TRANSITION_1,
-			SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
-
-	/* Set NSS management to software. */
-	spi_enable_software_slave_management(_SPI(CYRF_DEV_SPI, BUS));
-	spi_set_nss_high(_SPI(CYRF_DEV_SPI, BUS));
-
-	/* Enable SPI periph. */
-	spi_enable(_SPI(CYRF_DEV_SPI, BUS));
 
 	/* Reset the CYRF chip */
 	gpio_set(CYRF_DEV_RST_PORT, CYRF_DEV_RST_PIN);
@@ -181,8 +151,8 @@ void cyrf_register_send_callback(cyrf_on_event callback) {
 void cyrf_write_register(const uint8_t address, const uint8_t data) {
 	cm_disable_interrupts();
 	CYRF_CS_LO();
-	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
-	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data);
+	spi_xfer(CYRF_DEV_SPI, CYRF_DIR | address);
+	spi_xfer(CYRF_DEV_SPI, data);
 	CYRF_CS_HI();
 	cm_enable_interrupts();
 }
@@ -197,10 +167,10 @@ void cyrf_write_block(const uint8_t address, const uint8_t data[], const int len
 	int i;
 	cm_disable_interrupts();
 	CYRF_CS_LO();
-	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), CYRF_DIR | address);
+	spi_xfer(CYRF_DEV_SPI, CYRF_DIR | address);
 
 	for (i = 0; i < length; i++)
-		spi_xfer(_SPI(CYRF_DEV_SPI, BUS), data[i]);
+		spi_xfer(CYRF_DEV_SPI, data[i]);
 
 	CYRF_CS_HI();
 	cm_enable_interrupts();
@@ -215,8 +185,8 @@ uint8_t cyrf_read_register(const uint8_t address) {
 	uint8_t data;
 	cm_disable_interrupts();
 	CYRF_CS_LO();
-	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
-	data = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
+	spi_xfer(CYRF_DEV_SPI, address);
+	data = spi_xfer(CYRF_DEV_SPI, 0);
 	CYRF_CS_HI();
 	cm_enable_interrupts();
 	return data;
@@ -232,10 +202,10 @@ void cyrf_read_block(const uint8_t address, uint8_t data[], const int length) {
 	int i;
 	cm_disable_interrupts();
 	CYRF_CS_LO();
-	spi_xfer(_SPI(CYRF_DEV_SPI, BUS), address);
+	spi_xfer(CYRF_DEV_SPI, address);
 
 	for (i = 0; i < length; i++)
-		data[i] = spi_xfer(_SPI(CYRF_DEV_SPI, BUS), 0);
+		data[i] = spi_xfer(CYRF_DEV_SPI, 0);
 
 	CYRF_CS_HI();
 	cm_enable_interrupts();

@@ -18,9 +18,9 @@
  */
 
 #include "pprzlink.h"
-#include "cdcacm.h"
-#include "ring.h"
-#include "led.h"
+#include "modules/cdcacm.h"
+#include "modules/ring.h"
+#include "modules/led.h"
 
 struct pprzlink_t pprzlink;
 

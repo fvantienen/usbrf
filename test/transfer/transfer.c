@@ -22,14 +22,15 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 
-#include "../../src/board.h"
+#include "board.h"
 
 /* Load the modules */
-#include "../../src/modules/led.h"
-#include "../../src/modules/timer.h"
-#include "../../src/modules/cdcacm.h"
-#include "../../src/modules/ring.h"
-#include "../../src/modules/cyrf6936.h"
+#include "modules/led.h"
+#include "modules/spi.h"
+#include "modules/timer.h"
+#include "modules/cdcacm.h"
+#include "modules/ring.h"
+#include "modules/cyrf6936.h"
 
 /* The packet that it sended */
 static const uint8_t packet[16] = {
@@ -123,6 +124,7 @@ int main(void)
 	led_init();
 	timer_init();
 	cdcacm_init();
+	spi_init();
 	cyrf_init();
 
 	// Register callbacks

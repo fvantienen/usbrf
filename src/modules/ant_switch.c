@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include "ant_switch.h"
-
-#include "../board.h"
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+ 
+#include "ant_switch.h"
+#include "board.h"
 
 /**
  * Initialize the antenna switcher

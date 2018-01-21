@@ -386,7 +386,7 @@ static void protocol_dsm_hack_receive(bool error) {
 /**
  * Whenever a packet has been send
  */
-static void protocol_dsm_hack_send(bool error) {
+static void protocol_dsm_hack_send(bool error __attribute__((unused))) {
 	cyrf_start_transmit();
 	protocol_dsm_hack_next();
 	//console_print("S");

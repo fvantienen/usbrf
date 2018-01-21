@@ -43,17 +43,7 @@
 //#define BTN_BIND_NVIC				NVIC_EXTI0_IRQ	/**< The Bind button NVIC for the interrupt */
 
 /* Define the SPI busses */
-#define __SPI(i, j) i ## _ ## j
-#define _SPI(i, j)  __SPI(i, j)
-
-#define _SPI2_BUS						SPI2 							/**< The SPI bus */
-#define _SPI2_CLK						RCC_SPI2					/**< The SPI clock */
-#define _SPI2_SCK_PORT			GPIOB							/**< The SPI SCK port */
-#define _SPI2_SCK_PIN				GPIO13						/**< The SPI SCK pin */
-#define _SPI2_MISO_PORT			GPIOB							/**< The SPI MISO port */
-#define _SPI2_MISO_PIN			GPIO14						/**< The SPI MISO pin */
-#define _SPI2_MOSI_PORT			GPIOB							/**< The SPI MOSI port */
-#define _SPI2_MOSI_PIN			GPIO15						/**< The SPI MOSI pin */
+#define USE_SPI2				1 										/**< Enable the SPI2 bus */
 
 /* Define the Antenna Switcher */
 #define ANTENNA_SW1_PORT 		GPIOB							/**< The first antenna switcher port */
@@ -64,7 +54,7 @@
 #define ANTENNA_SW2_CLK 		RCC_GPIOB					/**< The second antenna switcher clock */
 
 /* Define the CYRF6936 chip */
-#define CYRF_DEV_SPI					_SPI2							/**< The SPI connection number */
+#define CYRF_DEV_SPI					SPI2							/**< The SPI connection number */
 #define CYRF_DEV_ANT					{true, true}			/**< The antenna switcher state */
 #define CYRF_DEV_SS_PORT			GPIOB							/**< The SPI SS port */
 #define CYRF_DEV_SS_PIN				GPIO12						/**< The SPI SS pin */
@@ -73,7 +63,7 @@
 #define CYRF_DEV_RST_CLK			RCC_GPIOB					/**< The RST GPIO clock */
 
 /* Define the CC2500 chip */
-#define CC_DEV_SPI					_SPI2							/**< The SPI connection number */
+#define CC_DEV_SPI					SPI2							/**< The SPI connection number */
 #define CC_DEV_ANT					{false, true}			/**< The antenna switcher state */
 #define CC_DEV_SS_PORT			GPIOB							/**< The SPI SS port */
 #define CC_DEV_SS_PIN				GPIO6							/**< The SPI SS pin */

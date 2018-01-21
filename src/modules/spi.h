@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2013 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2018 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,22 +17,17 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MODULES_TIMER_H_
-#define MODULES_TIMER_H_
+#ifndef MODULES_SPI_H_
+#define MODULES_SPI_H_
 
-// Include the board specifications for the timers
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/spi.h>
+
+// Include the board specifications for the spi busses
 #include "board.h"
-#include <stdbool.h>
 
-typedef void (*timer_on_event) (void);
+/* External functions for the spi busses */
+void spi_init(void);
 
-/* External functions */
-void timer_init(void);
-
-void timer1_set(uint16_t us);
-uint16_t timer1_get_time(void);
-void timer1_stop(void);
-void timer1_wait(bool wait);
-void timer1_register_callback(timer_on_event callback);
-
-#endif /* MODULES_TIMER_H_ */
+#endif /* MODULES_SPI_H_ */

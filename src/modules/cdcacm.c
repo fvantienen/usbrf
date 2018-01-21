@@ -30,8 +30,8 @@
 #include <libopencm3/stm32/st_usbfs.h>
 
 #include "cdcacm.h"
-#include "ring.h"
-#include "../helper/usb_struct_templates.h"
+#include "modules/ring.h"
+#include "helper/usb_struct_templates.h"
 
 
 // The usbd device
