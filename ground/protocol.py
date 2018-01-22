@@ -113,7 +113,7 @@ class DSMX(Protocol):
 
 class DSM2(Protocol):
 	CHAN_TIME = 19500*1.5									# Amount of time before reapearance per channel (us)
-	CHAN_USED = 2													# Amount of channels in used
+	CHAN_USED = 2													# Amount of channels in use
 	CHAN_MIN = 0													# Lowest occuring channel number
 	CHAN_MAX = 79													# Highest occuring channel number
 	CHAN_SEARCH_MIN = CHAN_MAX-CHAN_MIN		# Minimum number of channel to search before single occurance
@@ -127,7 +127,6 @@ class DSM2(Protocol):
 		self.scan_times[ProtState.AVERAGE] = DSM2.CHAN_TIME * DSM2.CHAN_SEARCH_AVG * DSM2.DATA_CODES
 		self.scan_times[ProtState.MAXIMUM] = DSM2.CHAN_TIME * DSM2.CHAN_SEARCH_MAX * DSM2.DATA_CODES
 
-		self.channels_min = []
 		for channel in range(DSM2.CHAN_MIN, DSM2.CHAN_MIN+DSM2.CHAN_SEARCH_MIN):
 			for pn_column in range(0, DSM2.DATA_CODES):
 				pn_row = channel%5
@@ -156,6 +155,27 @@ class DSM2(Protocol):
 		return None
 
 class FrSkyX(Protocol):
+	CHAN_TIME = 9000*47																# Amount of time before reapearance per channel (us)
+	CHAN_USED = 47																		# Amount of channels in use
+	CHAN_MIN = 1 																			# Lowest occuring channel number
+	CHAN_MAX = 235																		# Highest occuring channel number
+	CHAN_SEARCH_MIN = CHAN_MAX-CHAN_MIN-CHAN_USED+1 	# Minimum amount of channels to search
+	CHAN_SEARCH_AVG = CHAN_MAX-CHAN_MIN 							# Average amount of channels to search
+	CHAN_SEARCH_MAX = CHAN_MAX-CHAN_MIN 							# Maximum amount of channels to search
+	FSCTRL0_NUM = 8 																	# Frequency offsets
 
 	def __init__(self):
 		Protocol.__init__(self, "FrSkyX")
+		self.scan_times[ProtState.MINIMUM] = FrSkyX.CHAN_TIME * FrSkyX.CHAN_SEARCH_MIN
+		self.scan_times[ProtState.AVERAGE] = FrSkyX.CHAN_TIME * FrSkyX.CHAN_SEARCH_AVG
+		self.scan_times[ProtState.MAXIMUM] = FrSkyX.CHAN_TIME * FrSkyX.CHAN_SEARCH_MAX * FrSkyX.FSCTRL0_NUM
+
+		for channel in range(FrSkyX.CHAN_MIN, FrSkyX.CHAN_MIN + FrSkyX.CHAN_SEARCH_MIN):
+			self.channels[ProtState.MINIMUM].add((channel, 0))
+
+		for channel in range(FrSkyX.CHAN_MIN, FrSkyX.CHAN_MAX):
+			self.channels[ProtState.AVERAGE].add((channel, 0))
+
+		for channel in range(FrSkyX.CHAN_MIN, FrSkyX.CHAN_MAX):
+			for fsctrl0 in range(FrSkyX.FSCTRL0_NUM):
+				self.channels[ProtState.MAXIMUM].add((channel, fsctrl0))

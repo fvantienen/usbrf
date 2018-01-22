@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2015 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2018 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -107,6 +107,7 @@ static void protocol_cyrf_scanner_deinit(void) {
 	if(cyrf_scan_args != NULL) {
 		free(cyrf_scan_args);
 		cyrf_scan_args = NULL;
+		cyrf_scan_args_len = 0;
 	}
 	console_print("\r\nCYRF Scanner deinitialized");
 }
@@ -157,7 +158,7 @@ static void protocol_cyrf_scanner_run(void) {
 static void protocol_cyrf_scanner_status(void) {
 	uint8_t channel = cyrf_scan_args[cyrf_scan_idx*2];
 	uint8_t row_col = cyrf_scan_args[cyrf_scan_idx*2+1];
-	console_print("\r\nScanning at index %d at channel %d [%d, %d]", cyrf_scan_idx, channel, row_col >> 4, row_col & 0xF);
+	console_print("\r\n\tScanning at index %d at channel %d [%d, %d]", cyrf_scan_idx, channel, row_col >> 4, row_col & 0xF);
 }
 
 /**

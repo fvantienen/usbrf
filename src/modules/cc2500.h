@@ -147,6 +147,14 @@ enum {
 #define CC2500_LQI_CRC_OK_BM                   0x80
 #define CC2500_LQI_EST_BM                      0x7F
 
+// adress checks
+#define CC2500_PKTCTRL1_FLAG_ADR_CHECK_00 ((0<<1) | (0<<0))
+#define CC2500_PKTCTRL1_FLAG_ADR_CHECK_01 ((0<<1) | (1<<0))
+#define CC2500_PKTCTRL1_FLAG_ADR_CHECK_10 ((1<<1) | (0<<0))
+#define CC2500_PKTCTRL1_FLAG_ADR_CHECK_11 ((1<<1) | (1<<0))
+#define CC2500_PKTCTRL1_APPEND_STATUS     (1<<2)
+#define CC2500_PKTCTRL1_CRC_AUTOFLUSH     (1<<3)
+
 enum cc2500_mode_t {
     CC2500_TXRX_OFF = 0,
     CC2500_TXRX_TX,
@@ -157,7 +165,7 @@ enum cc2500_mode_t {
 void cc_init(void);
 void cc_run(void);
 
-typedef void (*cc_on_event)(const bool error);
+typedef void (*cc_on_event)(uint8_t len);
 void cc_register_recv_callback(cc_on_event callback);
 void cc_register_send_callback(cc_on_event callback);
 
@@ -170,7 +178,7 @@ bool cc_reset(void);
 void cc_get_mfg_id(uint8_t *mfg_id);
 void cc_strobe(uint8_t cmd);
 void cc_write_data(uint8_t *packet, uint8_t length);
-void cc_read_data(uint8_t *packet, uint8_t *length);
+void cc_read_data(uint8_t *packet, uint8_t length);
 void cc_set_mode(enum cc2500_mode_t mode);
 void cc_set_power(uint8_t power);
 

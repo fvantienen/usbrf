@@ -17,11 +17,28 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CYRF_SCANNER_H_
-#define CYRF_SCANNER_H_
+#ifndef HELPER_FRSKY_H_
+#define HELPER_FRSKY_H_
 
-#include "modules/protocol.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-extern struct protocol_t protocol_cyrf_scanner;
+/* All times are in microseconds divided by 10 */
+#define FRSKY_RECV_TIME			1000				//*< Time to wait for an FrSky packet */
+#define FRSKY_SEND_TIME			900					//*< Time between 2 consecutive packets */ 
+#define FRSKYX_USED_CHAN		47					//*< Amount of channels used by FrSkyX */
+#define FRSKY_MAX_CHANNEL		235					//*< The highest channel number */
 
-#endif /* CYRF_SCANNER_H_ */
+/* The different FrSky protocols */
+enum frsky_protocol_t {
+	FRSKYV = 0,
+	FRSKYD,
+	FRSKYX,
+	FRSKYX_EU
+};
+
+/* External functions */
+void frsky_set_config(enum frsky_protocol_t protocol);
+void frsky_tune_channel(uint8_t ch);
+
+#endif /* HELPER_FRSKY_H_ */

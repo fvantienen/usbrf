@@ -17,11 +17,11 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CYRF_SCANNER_H_
-#define CYRF_SCANNER_H_
+#ifndef CC_SCANNER_H_
+#define CC_SCANNER_H_
 
 #include "modules/protocol.h"
 
-extern struct protocol_t protocol_cyrf_scanner;
+extern struct protocol_t protocol_cc_scanner;
 
-#endif /* CYRF_SCANNER_H_ */
+#endif /* CC_SCANNER_H_ */

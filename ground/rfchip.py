@@ -154,4 +154,29 @@ class CC2500(RFChip):
 
 	def start_scanning(self, devices):
 		"""Start scanning and devide across the devices"""
-		pass
+		dev_cnt = len(devices)
+		channels = self.divide_channels(dev_cnt)
+
+		print(len(self.calc_scan_channels()))
+		#print(self.divide_channels(3))
+
+		for i in range(dev_cnt):
+			print(len(channels[i]))
+			scan_data = self.generate_scan_data(channels[i])
+			devices[i].prot_exec(2, 1, scan_data) #FIXME ID
+
+	def divide_channels(self, cnt):
+		"""Divide the channels into cnt pieces for scanning"""
+		channels = sorted(list(self.calc_scan_channels()))
+		length = len(channels)
+		return [ channels[i*length // cnt: (i+1)*length // cnt] for i in range(cnt) ]
+
+	def generate_scan_data(self, channels):
+		"""Generate packet data from channel list"""
+		data = bytearray(len(channels)*2)
+		idx = 0
+		for channel in channels:
+			# 0: channel, 1: FSCTRL0
+			struct.pack_into("<BB", data, idx, channel[0], channel[1])
+			idx += 2
+		return data

@@ -65,6 +65,10 @@ void cc_run(void) {
 /**
  * Process the CC2500 requests */
 static void cc_process(void) {
+	uint8_t len = cc_read_register(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+	if(len) {
+		_cc_recv_callback(len);
+	}
 	/*uint8_t tx_irq_status, rx_irq_status;
 
 	// Read the transmit IRQ
@@ -187,7 +191,8 @@ bool cc_reset(void) {
  * @param[out] mfg_id The MFG id from the device
  */
 void cc_get_mfg_id(uint8_t *mfg_id) {
-	cc_read_block(CC2500_30_PARTNUM, mfg_id, 2);
+	mfg_id[0] = cc_read_register(CC2500_30_PARTNUM);
+	mfg_id[1] = cc_read_register(CC2500_31_VERSION);
 	DEBUG(cc, "READ MFG_ID: 0x%02X%02X", mfg_id[0], mfg_id[1]);
 }
 
@@ -217,11 +222,10 @@ void cc_write_data(uint8_t *packet, uint8_t length) {
 /**
  * Read the packet data from the chip
  * @param[out] *packet The read packet bytes
- * @param[in,out] *length The length of the read packet
+ * @param[in] *length The length to read
  */
-void cc_read_data(uint8_t *packet, uint8_t *length) {
-	cc_read_block(CC2500_3F_RXFIFO, packet, *length);
-	*length = cc_read_register(CC2500_3B_RXBYTES);
+void cc_read_data(uint8_t *packet, uint8_t length) {
+	cc_read_block(CC2500_3F_RXFIFO, packet, length);
 }
 
 /**

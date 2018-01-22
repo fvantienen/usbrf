@@ -17,8 +17,8 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PROTOCOL_DSM_H_
-#define PROTOCOL_DSM_H_
+#ifndef HELPER_DSM_H_
+#define HELPER_DSM_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -73,4 +73,4 @@ void dsm_set_chan(uint8_t channel, uint8_t pn_row, uint8_t sop_col, uint8_t data
 void dsm_set_channel(uint8_t channel, bool is_dsm2, uint8_t sop_col, uint8_t data_col, uint16_t crc_seed);
 void dsm_radio_to_channels(uint8_t* data, uint8_t nb_channels, bool is_11bit, int16_t* channels);
 
-#endif /* PROTOCOL_DSM_H_ */
+#endif /* HELPER_DSM_H_ */
