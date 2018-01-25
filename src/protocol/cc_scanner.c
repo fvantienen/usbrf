@@ -63,7 +63,7 @@ static uint16_t cc_scan_idx = 0;
 static uint8_t last_chan_num = 0;
 
 /**
- * Configure the CYRF chip and antenna switcher
+ * Configure the CC2500 chip and antenna switcher
  */
 static void protocol_cc_scanner_init(void) {
 	uint8_t mfg_id[2];
@@ -76,7 +76,7 @@ static void protocol_cc_scanner_init(void) {
 	ant_switch(ant_state);
 #endif
 
-	// Read the CYRF MFG and copy from the config
+	// Read the CC2500 MFG and copy from the config
 	cc_strobe(CC2500_SIDLE);
 	cc_get_mfg_id(mfg_id);
 	frsky_set_config(FRSKYX);
