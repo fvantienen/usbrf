@@ -24,6 +24,7 @@
 
 #include "config.h"
 #include "modules/console.h"
+#include "helper/crc.h"
 
 /* console commands */
 static void config_cmd_version(char *cmdLine);
@@ -38,6 +39,7 @@ static void config_cmd_reset(char *cmdLine);
  * We want to store the config in the last flash sector.
  */
 #define CONFIG_ADDR 0x0801FC00
+#define CONFIG_SEED 0x1221					 //*< The config CRC seed */
 
 /* Default configuration settings.
  * The version allways needs to be at the first place
@@ -55,12 +57,12 @@ struct ConfigItem usbrf_config[CONFIG_ITEMS];
  */
 void config_init(void) {
 	struct ConfigItem flash_config[CONFIG_ITEMS];
-	config_load(flash_config);
+	bool valid_cfg = config_load(flash_config);
 
 	/* Check if the version stored in flash is the same as the one we have set
 	   by default. Otherwise the config is very likely outdated and we will have to
 	   discard it. */
-	if (flash_config[0].value == init_config[0].value) {
+	if (valid_cfg && flash_config[0].value == init_config[0].value) {
 		memcpy(usbrf_config, flash_config, sizeof(struct ConfigItem) * CONFIG_ITEMS);
 	} else {
 		memcpy(usbrf_config, init_config, sizeof(init_config));
@@ -84,7 +86,6 @@ void config_store(void) {
 	uint32_t addr = CONFIG_ADDR;
 	uint8_t  *byte_config = (uint8_t *)usbrf_config;
 	uint16_t write_word;
-	int i;
 
 	/* Unlock flash. */
 	flash_unlock();
@@ -94,7 +95,7 @@ void config_store(void) {
 
 	/* Write config struct to flash. */
 	write_word = 0xFFFF;
-	for (i = 0; i < size; i++) {
+	for (uint16_t i = 0; i < size; i++) {
 		write_word = (write_word << 8) | (*(byte_config++));
 		if ((i % 2) == 1) {
 			flash_program_half_word(addr, write_word);
@@ -102,18 +103,19 @@ void config_store(void) {
 		}
 	}
 
-	if ((i % 2) == 1) {
+	/* Write last byte if the size is uneven */
+	if ((size % 2) == 1) {
 		write_word = (write_word << 8) | 0xFF;
 		flash_program_half_word(addr, write_word);
+		addr += 2;
 	}
 
 	/* Write config CRC to flash. */
+	uint16_t crc = crc16(CONFIG_SEED, byte_config, size);
+	flash_program_half_word(addr, crc);
 
 	/* Lock flash. */
 	flash_lock();
-
-	/* Check flash content for accuracy. */
-
 }
 
 /**
@@ -121,13 +123,13 @@ void config_store(void) {
  * This is definitely not the most efficient way of reading out the data. But
  * as we do it only once it probably does not matter much. (esden)
  */
-void config_load(struct ConfigItem config[]) {
+bool config_load(struct ConfigItem config[]) {
 	uint16_t size = sizeof(struct ConfigItem) * CONFIG_ITEMS;
 	uint16_t *flash_data = (uint16_t *)CONFIG_ADDR;
 	uint8_t *byte_config = (uint8_t *)config;
-	int i;
 
-	for (i = 0; i < size; i++) {
+	/* Read the config data from the flash */
+	for (uint16_t i = 0; i < size; i++) {
 		if ((i % 2) == 0) {
 			*byte_config = (*flash_data) >> 8;
 			byte_config++;
@@ -137,6 +139,18 @@ void config_load(struct ConfigItem config[]) {
 			flash_data++;
 		}
 	}
+
+	/* Go to next word if we ended uneven */
+	if ((size % 2) == 1)
+		flash_data++;
+
+	/* Check the CRC from flash */
+	uint16_t flash_crc = *flash_data;
+	uint16_t calc_crc = crc16(CONFIG_SEED, (uint8_t *)config, size);
+	if(flash_crc != calc_crc)
+		return false;
+
+	return true;
 }
 
 /**

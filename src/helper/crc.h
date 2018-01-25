@@ -1,7 +1,7 @@
 /*
  * This file is part of the superbitrf project.
  *
- * Copyright (C) 2013 Freek van Tienen <freek.v.tienen@gmail.com>
+ * Copyright (C) 2018 Freek van Tienen <freek.v.tienen@gmail.com>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -17,28 +17,12 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MODULES_CONFIG_H_
-#define MODULES_CONFIG_H_
+#ifndef HELPER_CRC_H_
+#define HELPER_CRC_H_
 
-#include <libopencm3/cm3/common.h>
+#include <stdint.h>
 
-#ifndef DEBUG
-#define DEBUG(a ,...) if(false){};
-#endif
+/* External functions */
+uint16_t crc16(uint16_t crc, uint8_t *data, uint16_t len);
 
-#define CONFIG_ITEMS 50
-struct ConfigItem {
-	char *name;
-  char *format;
-  float value;
-};
-extern struct ConfigItem usbrf_config[CONFIG_ITEMS];
-
-/**
- * External functions
- */
-void config_init(void);
-void config_store(void);
-bool config_load(struct ConfigItem config[]);
-
-#endif /* MODULES_CONFIG_H_ */
+#endif /* HELPER_CRC_H_ */
