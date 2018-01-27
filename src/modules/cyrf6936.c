@@ -239,14 +239,14 @@ uint8_t cyrf_get_rx_status(void) {
 
 /**
  * Set multiple (config) values at once
- * @param[in] config An array of len by 2, consisting the register address and the values
+ * @param[in] cfg An array of len by 2, consisting the register address and the values
  * @param[in] length The length of the config array
  */
-void cyrf_set_config_len(const uint8_t config[][2], const uint8_t length) {
+void cyrf_set_config_len(const uint8_t cfg[][2], const uint8_t length) {
 	int i;
 	for (i = 0; i < length; i++) {
-		cyrf_write_register(config[i][0], config[i][1]);
-		DEBUG(cyrf6936, "WRITE 0x%02X: 0x%02X", config[i][0], config[i][1]);
+		cyrf_write_register(cfg[i][0], cfg[i][1]);
+		DEBUG(cyrf6936, "WRITE 0x%02X: 0x%02X", cfg[i][0], cfg[i][1]);
 	}
 }
 
@@ -339,29 +339,29 @@ void cyrf_set_preamble(const uint8_t *preamble) {
 
 /**
  * Set the Framing config
- * @param[in] config The framing config register
+ * @param[in] cfg The framing config register
  */
-void cyrf_set_framing_cfg(const uint8_t config) {
-	cyrf_write_register(CYRF_FRAMING_CFG, config);
-	DEBUG(cyrf6936, "WRITE FRAMING: 0x%02X", config);
+void cyrf_set_framing_cfg(const uint8_t cfg) {
+	cyrf_write_register(CYRF_FRAMING_CFG, cfg);
+	DEBUG(cyrf6936, "WRITE FRAMING: 0x%02X", cfg);
 }
 
 /**
  * Set the RX config
- * @param[in] config The RX config register
+ * @param[in] cfg The RX config register
  */
-void cyrf_set_rx_cfg(const uint8_t config) {
-	cyrf_write_register(CYRF_RX_CFG, config);
-	DEBUG(cyrf6936, "WRITE RX_CFG: 0x%02X", config);
+void cyrf_set_rx_cfg(const uint8_t cfg) {
+	cyrf_write_register(CYRF_RX_CFG, cfg);
+	DEBUG(cyrf6936, "WRITE RX_CFG: 0x%02X", cfg);
 }
 
 /**
  * Set the TX config
- * @param[in] config The TX config register
+ * @param[in] cfg The TX config register
  */
-void cyrf_set_tx_cfg(const uint8_t config) {
-	cyrf_write_register(CYRF_TX_CFG, config);
-	DEBUG(cyrf6936, "WRITE TX_CFG: 0x%02X", config);
+void cyrf_set_tx_cfg(const uint8_t cfg) {
+	cyrf_write_register(CYRF_TX_CFG, cfg);
+	DEBUG(cyrf6936, "WRITE TX_CFG: 0x%02X", cfg);
 }
 
 /*

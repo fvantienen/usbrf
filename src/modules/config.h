@@ -26,19 +26,32 @@
 #define DEBUG(a ,...) if(false){};
 #endif
 
-#define CONFIG_ITEMS 50
-struct ConfigItem {
-	char *name;
-  char *format;
-  float value;
+/**
+ * The config structure based on the list
+ */
+#define CONFIG_ITEM(_name, _type, _parser, _default) _type _name;
+#define CONFIG_ARRAY(_name, _type, _cnt, _parser, _default) _type _name[_cnt];
+struct config_t {
+	#include "modules/config_list.h"
 };
-extern struct ConfigItem usbrf_config[CONFIG_ITEMS];
+#undef CONFIG_ITEM
+#undef CONFIG_ARRAY
+extern struct config_t config;
+
+// The configure link structure between name and value
+struct config_link_t {
+	char *name;
+	uint16_t cnt;
+	uint8_t bytes_cnt;
+	char *parser;
+	void *value;
+};
 
 /**
  * External functions
  */
 void config_init(void);
 void config_store(void);
-bool config_load(struct ConfigItem config[]);
+bool config_load(struct config_t *cfg);
 
 #endif /* MODULES_CONFIG_H_ */

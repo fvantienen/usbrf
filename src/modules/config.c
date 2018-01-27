@@ -44,11 +44,22 @@ static void config_cmd_reset(char *cmdLine);
 /* Default configuration settings.
  * The version allways needs to be at the first place
  */
-const struct ConfigItem init_config[CONFIG_ITEMS] = {
-	{"VERSION", "%.1f", 1.0},
-	{"DEBUG", "%.0f", 0}
+#define CONFIG_ITEM(_name, _type, _parser, _default) ._name = _default,
+#define CONFIG_ARRAY(_name, _type, _cnt, _parser, _default) ._name = _default,
+struct config_t config = {
+	#include "modules/config_list.h"
 };
-struct ConfigItem usbrf_config[CONFIG_ITEMS];
+#undef CONFIG_ITEM
+#undef CONFIG_ARRAY
+
+#define CONFIG_ITEM(_name, _type, _parser, _default) { .name = #_name, .cnt = 1, .bytes_cnt = sizeof(_type), .parser = _parser, .value = &config._name },
+#define CONFIG_ARRAY(_name, _type, _cnt, _parser, _default) { .name = #_name, .cnt = _cnt, .bytes_cnt = sizeof(_type), .parser = _parser, .value = &config._name },
+static struct config_link_t config_links[] = {
+	#include "modules/config_list.h"
+};
+#undef CONFIG_ITEM
+#undef CONFIG_ARRAY
+static uint16_t config_links_cnt = sizeof(config_links) / sizeof(config_links[0]);
 
 /**
  * Initializes the configuration
@@ -56,16 +67,15 @@ struct ConfigItem usbrf_config[CONFIG_ITEMS];
  * Else the one from flash gets loaded.
  */
 void config_init(void) {
-	struct ConfigItem flash_config[CONFIG_ITEMS];
-	bool valid_cfg = config_load(flash_config);
+	struct config_t flash_cfg;
+	bool valid_cfg = config_load(&flash_cfg);
 
 	/* Check if the version stored in flash is the same as the one we have set
 	   by default. Otherwise the config is very likely outdated and we will have to
 	   discard it. */
-	if (valid_cfg && flash_config[0].value == init_config[0].value) {
-		memcpy(usbrf_config, flash_config, sizeof(struct ConfigItem) * CONFIG_ITEMS);
+	if (valid_cfg && flash_cfg.version == config.version) {
+		memcpy(&config, &flash_cfg, sizeof(struct config_t));
 	} else {
-		memcpy(usbrf_config, init_config, sizeof(init_config));
 		config_store();
 	}
 
@@ -82,10 +92,9 @@ void config_init(void) {
  * Stores the current config in flash
  */
 void config_store(void) {
-	uint16_t size = sizeof(struct ConfigItem) * CONFIG_ITEMS;
+	uint16_t size = sizeof(struct config_t);
 	uint32_t addr = CONFIG_ADDR;
-	uint8_t  *byte_config = (uint8_t *)usbrf_config;
-	uint16_t write_word;
+	uint8_t  *byte_config = (uint8_t *)&config;
 
 	/* Unlock flash. */
 	flash_unlock();
@@ -94,7 +103,7 @@ void config_store(void) {
 	flash_erase_page(CONFIG_ADDR);
 
 	/* Write config struct to flash. */
-	write_word = 0xFFFF;
+	uint16_t write_word = 0xFFFF;
 	for (uint16_t i = 0; i < size; i++) {
 		write_word = (write_word << 8) | (*(byte_config++));
 		if ((i % 2) == 1) {
@@ -111,8 +120,9 @@ void config_store(void) {
 	}
 
 	/* Write config CRC to flash. */
-	uint16_t crc = crc16(CONFIG_SEED, byte_config, size);
+	uint16_t crc = crc16(CONFIG_SEED, (uint8_t *)&config, size);
 	flash_program_half_word(addr, crc);
+	//console_print("\r\nFLASH: %04X", crc);
 
 	/* Lock flash. */
 	flash_lock();
@@ -123,10 +133,10 @@ void config_store(void) {
  * This is definitely not the most efficient way of reading out the data. But
  * as we do it only once it probably does not matter much. (esden)
  */
-bool config_load(struct ConfigItem config[]) {
-	uint16_t size = sizeof(struct ConfigItem) * CONFIG_ITEMS;
+bool config_load(struct config_t *cfg) {
+	uint16_t size = sizeof(struct config_t);
 	uint16_t *flash_data = (uint16_t *)CONFIG_ADDR;
-	uint8_t *byte_config = (uint8_t *)config;
+	uint8_t *byte_config = (uint8_t *)cfg;
 
 	/* Read the config data from the flash */
 	for (uint16_t i = 0; i < size; i++) {
@@ -146,7 +156,7 @@ bool config_load(struct ConfigItem config[]) {
 
 	/* Check the CRC from flash */
 	uint16_t flash_crc = *flash_data;
-	uint16_t calc_crc = crc16(CONFIG_SEED, (uint8_t *)config, size);
+	uint16_t calc_crc = crc16(CONFIG_SEED, (uint8_t *)cfg, size);
 	if(flash_crc != calc_crc)
 		return false;
 
@@ -157,7 +167,7 @@ bool config_load(struct ConfigItem config[]) {
  * Show the current version and information
  */
 static void config_cmd_version(char *cmdLine __attribute((unused))) {
-	console_print("\r\nCurrent version: %.1f", usbrf_config[0].value);
+	console_print("\r\nCurrent version: %.1f", config.version);
 	console_print("\r\nMade by Freek van Tienen and Piotr Esden-Tempski");
 	console_print("\r\nLGPL V3");
 }
@@ -166,12 +176,12 @@ static void config_cmd_version(char *cmdLine __attribute((unused))) {
  * Load the config from flash
  */
 static void config_cmd_load(char *cmdLine __attribute((unused))) {
-	struct ConfigItem flash_config[CONFIG_ITEMS];
-	config_load(flash_config);
+	struct config_t flash_cfg;
+	bool valid = config_load(&flash_cfg);
 
 	/* Check if the version is the same, else show error */
-	if (flash_config[0].value == init_config[0].value) {
-		memcpy(&usbrf_config, &flash_config, sizeof(struct ConfigItem) * CONFIG_ITEMS);
+	if (valid && flash_cfg.version == flash_cfg.version) {
+		memcpy(&config, &flash_cfg, sizeof(struct config_t));
 		console_print("\r\nSuccessfully loaded config from the memory!");
 	} else {
 		console_print("\r\nThere is no loadable config found.");
@@ -191,20 +201,43 @@ static void config_cmd_save(char *cmdLine __attribute((unused))) {
  * Set a value
  */
 static void config_cmd_set(char *cmdLine) {
-	int i;
-	char name[16], buf[128];
-	float value;
+	char name[16], format[64];
+	int offset;
 
-	if (sscanf(cmdLine, "%16s %f", name, &value) != 2) {
-		console_print("\r\nThis function needs a name and value!");
+	if (sscanf(cmdLine, "%16s %n", name, &offset) != 1) {
+		console_print("\r\nThis function needs a name!");
 	} else {
-		for(i = 0; i < CONFIG_ITEMS; i++) {
-			if(usbrf_config[i].name[0] != 0 && !strncasecmp(usbrf_config[i].name, name, strlen(usbrf_config[i].name))) {
-				usbrf_config[i].value = value;
+		for(uint16_t i = 0; i < config_links_cnt; i++) {
+			if(!strncasecmp(config_links[i].name, name, strlen(config_links[i].name))) {
+				uint8_t value[config_links[i].bytes_cnt * config_links[i].cnt];
+				snprintf(format, 64, "%s%%n", config_links[i].parser);
 
-				console_print("\r\n%s = ", usbrf_config[i].name);
-    		sprintf(buf, usbrf_config[i].format, usbrf_config[i].value);
-				console_print(buf);
+				if(config_links[i].cnt == 1) {
+					if(sscanf(cmdLine + offset, format, value, &offset) != 1) {
+						console_print("\r\nInvalid value");
+						return;
+					}
+
+					memcpy(config_links[i].value, value, config_links[i].bytes_cnt);
+					console_print("\r\n %s = ", config_links[i].name);
+					console_print(config_links[i].parser, *(uint8_t*)config_links[i].value);
+				}
+				else {
+					int offset_cnt = offset;
+					for(uint16_t j = 0; j < config_links[i].cnt; j++) {
+						if(sscanf(cmdLine + offset_cnt, format, &value[j * config_links[i].bytes_cnt], &offset) != 1) {
+							console_print("\r\nInvalid value");
+							return;
+						}
+						offset_cnt += offset;
+					}
+
+					memcpy(config_links[i].value, value, config_links[i].bytes_cnt * config_links[i].cnt);
+					console_print("\r\n %s = ", config_links[i].name);
+					uint8_t *value_byte = (uint8_t *)config_links[i].value;
+					for(uint16_t j = 0; j < config_links[i].cnt; j++)
+  					console_print(config_links[i].parser, value_byte[j * config_links[i].bytes_cnt]);
+				}
 				return;
 			}
 		}
@@ -217,17 +250,17 @@ static void config_cmd_set(char *cmdLine) {
  * List all values
  */
 static void config_cmd_list(char *cmdLine __attribute((unused))) {
-	int i = 0;
-	char buf[128];
-
 	// Loop trough all config items
-	for(i = 0; i < CONFIG_ITEMS; i++) {
-		// Check if it is set
-		if(usbrf_config[i].name[0] != 0) {
-   		console_print("\r\n%s = ", usbrf_config[i].name);
-    	sprintf(buf, usbrf_config[i].format, usbrf_config[i].value);
-			console_print(buf);
-		}
+	for(uint16_t i = 0; i < config_links_cnt; i++) {
+ 		console_print("\r\n%s = ", config_links[i].name);
+ 		if(config_links[i].cnt == 1)
+  		console_print(config_links[i].parser, *(uint8_t*)config_links[i].value);
+  	else {
+  		uint8_t *value_byte = (uint8_t *)config_links[i].value;
+  		for(uint16_t j = 0; j < config_links[i].cnt; j++)
+  			console_print(config_links[i].parser, value_byte[j * config_links[i].bytes_cnt]);
+  	}
+		
 	}
 
 }
@@ -236,6 +269,6 @@ static void config_cmd_list(char *cmdLine __attribute((unused))) {
  * Reset to initial settings
  */
 static void config_cmd_reset(char *cmdLine __attribute((unused))) {
-	memcpy(usbrf_config, init_config, sizeof(init_config));
+	//memcpy(usbrf_config, init_config, sizeof(init_config));
 	console_print("\r\nSuccessfully reset to default settings.");
 }
