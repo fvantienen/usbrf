@@ -49,6 +49,7 @@ struct counter_status counter_status = {
 
 /**
  * Initialize the counter module.
+ * DON'T use the counter in interrupts with a lower priority!
  */
 void counter_init(void)
 {

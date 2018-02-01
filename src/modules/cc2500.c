@@ -34,11 +34,11 @@ cc_on_event _cc_send_callback = NULL;
 #define CC_CS_HI() gpio_set(CC_DEV_SS_PORT, CC_DEV_SS_PIN)
 #define CC_CS_LO() gpio_clear(CC_DEV_SS_PORT, CC_DEV_SS_PIN)
 
-/* Internal functions */
+/* Internal functions and settings */
 static void cc_process(void);
 
 /**
- * Initialize the CYRF6936
+ * Initialize the CC2500
  */
 void cc_init(void) {
 	DEBUG(cc, "Initializing");
@@ -63,11 +63,17 @@ void cc_run(void) {
 }
 
 /**
- * Process the CC2500 requests */
+ * Process the CC2500 requests
+ * We assume variable packet length mode and appended status, which means 3 extra bytes
+ */
 static void cc_process(void) {
-	uint8_t len = cc_read_register(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+	cc_handle_overflows();
+	uint8_t len = cc_read_register(CC2500_RXBYTES) & 0x7F;
 	if(len) {
-		_cc_recv_callback(len);
+		uint8_t len2 = cc_read_register(CC2500_RXBYTES) & 0x7F;
+		if(len == len2 && _cc_recv_callback != NULL) {
+			_cc_recv_callback(len);
+		}
 	}
 	/*uint8_t tx_irq_status, rx_irq_status;
 
@@ -183,7 +189,8 @@ bool cc_reset(void) {
 	cc_strobe(CC2500_SRES);
 	counter_wait_poll(counter_get_ticks_of_ms(1));
 	cc_set_mode(CC2500_TXRX_OFF);
-	return cc_read_register(CC2500_0E_FREQ1) == 0xC4;
+
+	return cc_read_register(CC2500_FREQ1) == 0xC4;
 }
 
 /**
@@ -191,8 +198,8 @@ bool cc_reset(void) {
  * @param[out] mfg_id The MFG id from the device
  */
 void cc_get_mfg_id(uint8_t *mfg_id) {
-	mfg_id[0] = cc_read_register(CC2500_30_PARTNUM);
-	mfg_id[1] = cc_read_register(CC2500_31_VERSION);
+	mfg_id[0] = cc_read_register(CC2500_PARTNUM);
+	mfg_id[1] = cc_read_register(CC2500_VERSION);
 	DEBUG(cc, "READ MFG_ID: 0x%02X%02X", mfg_id[0], mfg_id[1]);
 }
 
@@ -215,7 +222,7 @@ void cc_strobe(uint8_t cmd) {
  */
 void cc_write_data(uint8_t *packet, uint8_t length) {
 	cc_strobe(CC2500_SFTX);
-	cc_write_block(CC2500_3F_TXFIFO, packet, length);
+	cc_write_block(CC2500_TXFIFO, packet, length);
 	cc_strobe(CC2500_STX);
 }
 
@@ -225,7 +232,7 @@ void cc_write_data(uint8_t *packet, uint8_t length) {
  * @param[in] *length The length to read
  */
 void cc_read_data(uint8_t *packet, uint8_t length) {
-	cc_read_block(CC2500_3F_RXFIFO, packet, length);
+	cc_read_block(CC2500_RXFIFO, packet, length);
 }
 
 /**
@@ -234,14 +241,14 @@ void cc_read_data(uint8_t *packet, uint8_t length) {
  */
 void cc_set_mode(enum cc2500_mode_t mode) {
 	if(mode == CC2500_TXRX_TX) {
-		cc_write_register(CC2500_00_IOCFG2, 0x2F);
-		cc_write_register(CC2500_02_IOCFG0, 0x2F | 0x40);
+		cc_write_register(CC2500_IOCFG2, 0x2F);
+		cc_write_register(CC2500_IOCFG0, 0x2F | 0x40);
 	} else if (mode == CC2500_TXRX_RX) {
-		cc_write_register(CC2500_02_IOCFG0, 0x2F);
-		cc_write_register(CC2500_00_IOCFG2, 0x2F | 0x40);
+		cc_write_register(CC2500_IOCFG0, 0x2F);
+		cc_write_register(CC2500_IOCFG2, 0x2F | 0x40);
 	} else {
-		cc_write_register(CC2500_02_IOCFG0, 0x2F);
-		cc_write_register(CC2500_00_IOCFG2, 0x2F);
+		cc_write_register(CC2500_IOCFG0, 0x2F);
+		cc_write_register(CC2500_IOCFG2, 0x2F);
 	}
 }
 
@@ -264,5 +271,16 @@ void cc_set_power(uint8_t power) {
 	if (power > 7)
 		power = 7;
 
-	cc_write_register(CC2500_3E_PATABLE, patable[power]);
+	cc_write_register(CC2500_PATABLE, patable[power]);
+}
+
+/**
+ * Handle overflows in the TX and RX buffers
+ */
+void cc_handle_overflows(void) {
+    uint8_t marc_state = cc_read_register(CC2500_MARCSTATE) & 0x1F;
+    if (marc_state == 0x11)
+        cc_strobe(CC2500_SFRX);
+    else if (marc_state == 0x16)
+        cc_strobe(CC2500_SFTX);
 }

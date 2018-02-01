@@ -17,24 +17,20 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CONFIG_ITEM
-#define CONFIG_ITEM(...) {}
-#endif
-#ifndef CONFIG_ARRAY
-#define CONFIG_ARRAY(...) {}
-#endif
-#define _A(...) __VA_ARGS__
+#ifndef FRSKY_RECEIVER_H_
+#define FRSKY_RECEIVER_H_
 
-// General items
-CONFIG_ITEM(version, float, "%0.3f", 2.001)
-CONFIG_ITEM(debug, bool, "%d", false)
+#include "modules/protocol.h"
 
-// CYRF6936 items
-CONFIG_ARRAY(spektrum_bind_id, uint8_t, 4, "%02X", _A({0, 0, 0, 0}))
+extern struct protocol_t protocol_frsky_receiver;
 
-// CC2500 items
-CONFIG_ITEM(cc_tuned, bool, "%d", false)
-CONFIG_ITEM(cc_fsctrl0, int8_t, "%d", 0)
-CONFIG_ARRAY(frsky_bind_id, uint8_t, 2, "%02X", _A({0, 0}))
-CONFIG_ARRAY(frsky_hop_table, uint8_t, 50, "%02d ", _A({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}))
-CONFIG_ITEM(frsky_bound, bool, "%d", false)
+/* The internal states of the FrSky receiver protocol */
+enum frsky_receiver_state_t {
+	FRSKY_RECV_TUNE,			/**< The receiver is tuning FSCTRL0 based on the binding packets per 9 channels */
+	FRSKY_RECV_FINETUNE,	/**< The receiver is finetuning FSCTRL0 based on the binding packets per channel */
+	FRSKY_RECV_BIND,			/**< The receiver is receiving the binding packets */
+	FRSKY_RECV_SYNC,			/**< The receiver is synchronizing */
+	FRSKY_RECV_RECV,			/**< The receiver is receiving transmitter packets */
+};
+
+#endif /* FRSKY_RECEIVER_H_ */

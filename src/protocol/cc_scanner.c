@@ -81,9 +81,9 @@ static void protocol_cc_scanner_init(void) {
 	cc_get_mfg_id(mfg_id);
 	frsky_set_config(FRSKYX);
 	cc_set_mode(CC2500_TXRX_RX);
-	cc_write_register(CC2500_18_MCSM0, 0x18);
-	cc_write_register(CC2500_07_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS); // Disable CRC and address checks
-	last_chan_num = cc_read_register(CC2500_0A_CHANNR);
+	cc_write_register(CC2500_MCSM0, 0x18);
+	cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS); // Disable CRC and address checks
+	last_chan_num = cc_read_register(CC2500_CHANNR);
 
 	// Set the callbacks
 	timer1_register_callback(protocol_cc_scanner_timer);
@@ -115,8 +115,8 @@ static void protocol_cc_scanner_start(void) {
 	cc_scan_idx = 0;
 	
 	cc_strobe(CC2500_SIDLE);
-	cc_write_register(CC2500_0A_CHANNR, cc_scan_args[0]);
-	cc_write_register(CC2500_0C_FSCTRL0, cc_scan_args[1]);
+	cc_write_register(CC2500_CHANNR, cc_scan_args[0]);
+	cc_write_register(CC2500_FSCTRL0, cc_scan_args[1]);
 	cc_strobe(CC2500_SRX);
 	timer1_set(FRSKY_SEND_TIME*FRSKYX_USED_CHAN);
 
@@ -188,7 +188,7 @@ static void protocol_cc_scanner_receive(uint8_t len) {
 static void protocol_cc_scanner_next(void) {
 	cc_scan_idx = (cc_scan_idx+1) % (cc_scan_args_len/2);
 	cc_strobe(CC2500_SIDLE);
-	cc_write_register(CC2500_0A_CHANNR, cc_scan_args[cc_scan_idx*2]);
-	cc_write_register(CC2500_0C_FSCTRL0, cc_scan_args[cc_scan_idx*2 + 1]);
+	cc_write_register(CC2500_CHANNR, cc_scan_args[cc_scan_idx*2]);
+	cc_write_register(CC2500_FSCTRL0, cc_scan_args[cc_scan_idx*2 + 1]);
 	cc_strobe(CC2500_SRX);
 }

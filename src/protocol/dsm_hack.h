@@ -24,12 +24,13 @@
 
 extern struct protocol_t protocol_dsm_hack;
 
+/* The internal status of the DSM hacking protocol */
 enum dsm_hack_status_t {
-	DSM_HACK_SYNC				= 0x1,			/**< The receiver is syncing with the TX */
-	DSM_HACK_RECV_A			= 0x2,			/**< The receiver is receiving channel A */
-	DSM_HACK_RECV_B			= 0x3,			/**< The receiver is receiving channel B */
-	DSM_HACK_SEND_A			= 0x4,			/**< The receiver is taking over control channel A */
-	DSM_HACK_SEND_B			= 0x5,			/**< The receiver is taking over control channel B */
+	DSM_HACK_SYNC,				/**< The receiver is syncing with the TX */
+	DSM_HACK_RECV_A,			/**< The receiver is receiving channel A */
+	DSM_HACK_RECV_B,			/**< The receiver is receiving channel B */
+	DSM_HACK_SEND_A,			/**< The receiver is taking over control channel A */
+	DSM_HACK_SEND_B,			/**< The receiver is taking over control channel B */
 };
 
 #endif /* DSM_HACK_H_ */

@@ -24,6 +24,7 @@
 
 #include "config.h"
 #include "modules/console.h"
+#include "modules/cdcacm.h"
 #include "helper/crc.h"
 
 /* console commands */
@@ -261,6 +262,7 @@ static void config_cmd_list(char *cmdLine __attribute((unused))) {
   			console_print(config_links[i].parser, value_byte[j * config_links[i].bytes_cnt]);
   	}
 		
+		cdcacm_run(); // Fix for large transmits
 	}
 
 }
