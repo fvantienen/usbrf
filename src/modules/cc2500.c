@@ -69,7 +69,7 @@ void cc_run(void) {
 static void cc_process(void) {
 	cc_handle_overflows();
 	uint8_t len = cc_read_register(CC2500_RXBYTES) & 0x7F;
-	if(len) {
+	if(len && len != 1) {
 		uint8_t len2 = cc_read_register(CC2500_RXBYTES) & 0x7F;
 		if(len == len2 && _cc_recv_callback != NULL) {
 			_cc_recv_callback(len);

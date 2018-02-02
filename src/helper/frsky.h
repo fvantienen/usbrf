@@ -45,6 +45,11 @@ enum frsky_protocol_t {
 	FRSKYX_EU
 };
 
+/* External variables */
+extern uint8_t frsky_fscal1[FRSKY_HOP_TABLE_LENGTH+1];
+extern uint8_t frsky_fscal2;
+extern uint8_t frsky_fscal3;
+
 /* External functions */
 void frsky_set_config(enum frsky_protocol_t protocol);
 void frsky_tune_channel(uint8_t ch);

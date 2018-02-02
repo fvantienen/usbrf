@@ -39,6 +39,8 @@ extern struct counter_status counter_status;
 
 /* API declarations. */
 void counter_init(void);
+void _usleep(uint32_t x);
+#define usleep _usleep
 
 static inline uint32_t counter_get_ticks(void) {
 	return counter_status.ticks;

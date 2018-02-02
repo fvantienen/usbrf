@@ -123,7 +123,6 @@ void config_store(void) {
 	/* Write config CRC to flash. */
 	uint16_t crc = crc16(CONFIG_SEED, (uint8_t *)&config, size);
 	flash_program_half_word(addr, crc);
-	//console_print("\r\nFLASH: %04X", crc);
 
 	/* Lock flash. */
 	flash_lock();
@@ -168,7 +167,7 @@ bool config_load(struct config_t *cfg) {
  * Show the current version and information
  */
 static void config_cmd_version(char *cmdLine __attribute((unused))) {
-	console_print("\r\nCurrent version: %.1f", config.version);
+	console_print("\r\nCurrent version: %.3f", config.version);
 	console_print("\r\nMade by Freek van Tienen and Piotr Esden-Tempski");
 	console_print("\r\nLGPL V3");
 }

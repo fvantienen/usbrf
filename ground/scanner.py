@@ -56,8 +56,10 @@ class Scanner():
 		# Start scanning on all devices
 		for rfchip in self.rfchips:
 			for rf_time in rf_times:
-				if rf_time[0] == rfchip.name:
+				if rf_time[0] == rfchip.name and len(rf_time[3]) != 0:
 					rfchip.start_scanning(rf_time[3])
+				elif rf_time[0] == rfchip.name:
+					print('Not enough devices for ' + rfchip.name)
 
 		print('Starting scanner...')
 

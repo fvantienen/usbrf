@@ -57,7 +57,8 @@ static void protocol_cc_scanner_receive(uint8_t len);
 static void protocol_cc_scanner_next(void);
 
 /* Internal variables */
-static uint8_t *cc_scan_args = NULL;			//*< CHAN, FSCTRL0
+static enum frsky_protocol_t frsky_protocol = FRSKYX_EU;						/**< The current FrSky protocol used */
+static uint8_t *cc_scan_args = NULL;																/**< CHAN, FSCTRL0 */
 static uint16_t cc_scan_args_len = 0;
 static uint16_t cc_scan_idx = 0;
 static uint8_t last_chan_num = 0;
@@ -73,16 +74,17 @@ static void protocol_cc_scanner_init(void) {
 #ifdef CC_DEV_ANT
 	// Switch the antenna to the CC2500
 	bool ant_state[] = CC_DEV_ANT;
+#ifdef CLOSEBY_SCAN
+	ant_state[0] = !ant_state[0];
+	ant_state[1] = !ant_state[1];
+#endif
 	ant_switch(ant_state);
 #endif
 
 	// Read the CC2500 MFG and copy from the config
 	cc_strobe(CC2500_SIDLE);
 	cc_get_mfg_id(mfg_id);
-	frsky_set_config(FRSKYX);
 	cc_set_mode(CC2500_TXRX_RX);
-	cc_write_register(CC2500_MCSM0, 0x18);
-	cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS); // Disable CRC and address checks
 	last_chan_num = cc_read_register(CC2500_CHANNR);
 
 	// Set the callbacks
@@ -115,12 +117,16 @@ static void protocol_cc_scanner_start(void) {
 	cc_scan_idx = 0;
 	
 	cc_strobe(CC2500_SIDLE);
+	frsky_set_config(frsky_protocol);
+	cc_write_register(CC2500_MCSM0, 0x18); // Enable auto tuning
+	cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS | CC2500_PKTCTRL1_CRC_AUTOFLUSH); // Disable address checks
 	cc_write_register(CC2500_CHANNR, cc_scan_args[0]);
-	cc_write_register(CC2500_FSCTRL0, cc_scan_args[1]);
+	cc_write_register(CC2500_FSCTRL0, config.cc_fsctrl0 + cc_scan_args[1]);
+	cc_strobe(CC2500_SFRX);
 	cc_strobe(CC2500_SRX);
 	timer1_set(FRSKY_SEND_TIME*FRSKYX_USED_CHAN);
 
-	console_print("\r\nCC Scanner started...");
+	console_print("\r\nCC Scanner started %d...", frsky_protocol);
 }
 
 /**
@@ -128,6 +134,7 @@ static void protocol_cc_scanner_start(void) {
  */
 static void protocol_cc_scanner_stop(void) {
 	// Stop the timer
+	cc_strobe(CC2500_SIDLE);
 	timer1_stop();
 	console_print("\r\nCC Scanner stopped...");
 }
@@ -156,17 +163,26 @@ static void protocol_cc_scanner_parse_arg(uint8_t type, uint8_t *arg, uint16_t l
 
 	// Allocate the arguments if needed
 	if(cc_scan_args == NULL) {
-		cc_scan_args = malloc(tot_len);
-		cc_scan_args_len = tot_len;
+		cc_scan_args = malloc(tot_len-1);
+		cc_scan_args_len = tot_len-1;
 	}
 
 	// Reallocate if need
-	if(cc_scan_args_len < tot_len) 
-		cc_scan_args = realloc(cc_scan_args, tot_len);
+	if(cc_scan_args_len < tot_len-1) 
+		cc_scan_args = realloc(cc_scan_args, tot_len-1);
 
-	// Save the arguments
+	// Save the protocol type
+	uint8_t arg_offset = 0;
+	if(offset == 0) {
+		frsky_protocol = arg[0];
+		arg_offset = 1;
+	} else {
+		offset--;
+	}
+
+	// Save the arguments scanning list
 	cc_scan_args_len = tot_len;
-	memcpy(cc_scan_args + offset, arg, len);
+	memcpy(cc_scan_args + offset, arg + arg_offset, len - arg_offset);
 }
 
 
@@ -176,9 +192,32 @@ static void protocol_cc_scanner_timer(void) {
 }
 
 static void protocol_cc_scanner_receive(uint8_t len) {
-	uint8_t data[len];
-	cc_read_data(data, len);
+	static uint8_t packet_len = 0;
+
+	/* Check if we receieved a packet length */
+	if(packet_len == 0) {
+		cc_read_data(&packet_len, 1);
+		len--;
+	}
+
+	/* Check if we received a full packet */
+	if(len < packet_len+2)
+		return;
+
+	uint8_t packet[packet_len+5];
+	packet[0] = packet_len;
+	cc_read_data(&packet[1], packet_len+2);
+
+	packet[packet_len+3] = cc_scan_args[cc_scan_idx*2];
+	packet[packet_len+4] = cc_read_register(CC2500_CHANNR);
+
+	uint8_t chip_id = 1;
+	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, packet_len+5, packet);
+
+	packet_len = 0;
 	LED_TOGGLE(LED_RX);
+	cc_strobe(CC2500_SIDLE);
+	cc_strobe(CC2500_SFRX);
 	cc_strobe(CC2500_SRX);
 }
 
@@ -189,6 +228,7 @@ static void protocol_cc_scanner_next(void) {
 	cc_scan_idx = (cc_scan_idx+1) % (cc_scan_args_len/2);
 	cc_strobe(CC2500_SIDLE);
 	cc_write_register(CC2500_CHANNR, cc_scan_args[cc_scan_idx*2]);
-	cc_write_register(CC2500_FSCTRL0, cc_scan_args[cc_scan_idx*2 + 1]);
+	cc_write_register(CC2500_FSCTRL0, config.cc_fsctrl0 + cc_scan_args[cc_scan_idx*2 + 1]);
+	cc_strobe(CC2500_SFRX);
 	cc_strobe(CC2500_SRX);
 }

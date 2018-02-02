@@ -18,8 +18,14 @@
  */
 
 #include "frsky.h"
+
 #include "modules/cc2500.h"
 #include "modules/counter.h"
+
+/* External variables which are used in multiple protocols */
+uint8_t frsky_fscal1[FRSKY_HOP_TABLE_LENGTH+1];							/**< The FSCAL1 values for each of the channels in the hopping table + 1 for the binding channel */
+uint8_t frsky_fscal2 = 0;																		/**< The calibration value for FSCAL2 */
+uint8_t frsky_fscal3 = 0;																		/**< The calibration value for FSCAL3 */
 
 /* The common starting register addresses */
 static const uint8_t frsky_conf_addr[]= {
@@ -230,9 +236,9 @@ void frsky_tune_channel(uint8_t ch) {
 	cc_write_register(CC2500_CHANNR, ch);
 	cc_strobe(CC2500_SCAL);
 
-	// Wait for calibration to end
+	// Wait for calibration to end (busy sleep, because can be called in interrupt)
 	while (cc_read_register(CC2500_MARCSTATE) != 0x01)
-		counter_wait_poll(counter_get_ticks_of_us(100));
+		usleep(100);
 }
 
 /**
@@ -266,6 +272,6 @@ void frsky_tune_channels(uint8_t *channels, uint8_t length, uint8_t *fscal1, uin
 uint16_t frskyx_crc(const uint8_t *data, uint8_t length) {
 	uint16_t crc = 0;
   for(uint8_t i = 0; i < length; i++)
-      crc = (crc<<8) ^ frskyx_crc_table[((uint8_t)(crc>>8) ^ data[i]) & 0xFF];
+    crc = (crc<<8) ^ frskyx_crc_table[((uint8_t)(crc>>8) ^ data[i]) & 0xFF];
   return crc;
 }

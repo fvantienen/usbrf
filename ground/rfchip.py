@@ -2,6 +2,7 @@
 # Copyright (C) 2017 Freek van Tienen <freek.v.tienen@gmail.com>
 import protocol
 import struct
+import sys
 
 class RFChip():
 
@@ -38,6 +39,12 @@ class RFChip():
 				return tx
 		return None
 
+	def divide_channels(self, chans, cnt):
+		"""Divide the channels into cnt pieces for scanning"""
+		channels = sorted(list(chans))
+		length = len(channels)
+		return [ channels[i*length // cnt: (i+1)*length // cnt] for i in range(cnt) ]
+
 
 class CYRF6936(RFChip):
 	NAME = "CYRF6936"
@@ -71,13 +78,9 @@ class CYRF6936(RFChip):
 	def start_scanning(self, devices):
 		"""Start scanning and devide across the devices"""
 		dev_cnt = len(devices)
-		channels = self.divide_channels(dev_cnt)
-
-		print(len(self.calc_scan_channels()))
-		#print(self.divide_channels(3))
+		channels = self.divide_channels(self.calc_scan_channels(), dev_cnt)
 
 		for i in range(dev_cnt):
-			print(len(channels[i]))
 			scan_data = self.generate_scan_data(channels[i])
 			devices[i].prot_exec(0, 1, scan_data) #FIXME ID
 
@@ -85,12 +88,6 @@ class CYRF6936(RFChip):
 		"""Start hacking the transmitter"""
 		hack_data = self.generate_hack_data(tx)
 		device.prot_exec(1, 1, hack_data)
-
-	def divide_channels(self, cnt):
-		"""Divide the channels into cnt pieces for scanning"""
-		channels = sorted(list(self.calc_scan_channels()))
-		length = len(channels)
-		return [ channels[i*length // cnt: (i+1)*length // cnt] for i in range(cnt) ]
 
 	def generate_scan_data(self, channels):
 		"""Generate packet data from channel list"""
@@ -123,7 +120,7 @@ class CYRF6936(RFChip):
 	def calc_crc(data, crc):
 		"""Calculate th CRC of the packet (append length in front of data)"""
 		for d in data:
-			crc = (crc >> 8) ^ CYRF6936.CRC_TABLE[(crc ^ CYRF6936.reverse_bit(d)) & 0xff];
+			crc = (crc >> 8) ^ CYRF6936.CRC_TABLE[(crc ^ CYRF6936.reverse_bit(d)) & 0xff]
 		return crc
 
 	@staticmethod
@@ -150,31 +147,55 @@ class CC2500(RFChip):
 		self.name = CC2500.NAME
 		self.id = CC2500.ID
 		self.frskyx = protocol.FrSkyX()
-		self.protocols = [self.frskyx]
+		self.frskyxeu = protocol.FrSkyXEU()
+		self.protocols = [self.frskyx, self.frskyxeu]
 
 	def start_scanning(self, devices):
 		"""Start scanning and devide across the devices"""
 		dev_cnt = len(devices)
-		channels = self.divide_channels(dev_cnt)
+		devs = list(devices)
+		rf_times = []
 
-		print(len(self.calc_scan_channels()))
-		#print(self.divide_channels(3))
+		# Calculate the time per protocol
+		for prot in self.protocols:
+			rf_times.append([prot, prot.get_scan_time(), 0, []])
+			print('\t' + prot.name + ': ' + str(prot.get_scan_time()))
+
+		# Sort the rf_times
+		for rf_time in rf_times:
+			if rf_time[1] == 0:
+				rf_times.remove(rf_time)
+		rf_times.sort(key=lambda rf_time: sys.maxint if rf_time[2] == 0 else (rf_time[1]/rf_time[2]), reverse=True)
+
+		# For al the devices make a smart choice
+		while len(devs) != 0:
+			dev = devs[0]
+			rf_times[0][3].append(dev)
+			rf_times[0][2] += 1
+			devs.remove(dev)
+			rf_times.sort(key=lambda rf_time: sys.maxint if rf_time[2] == 0 else (rf_time[1]/rf_time[2]), reverse=True)
+
+		# Devide the work over the devices
+		for rf_time in rf_times:
+			if rf_time[2] != 0:
+				self.start_scanning_prot(rf_time[0], rf_time[3])
+			else:
+				print('\tNot enough devices for ' + rf_time[0].name)
+
+	def start_scanning_prot(self, prot, devices):
+		"""Start scanning and devide across the devices for a specific protocol"""
+		dev_cnt = len(devices)
+		channels = self.divide_channels(prot.get_channels(), dev_cnt)
 
 		for i in range(dev_cnt):
-			print(len(channels[i]))
-			scan_data = self.generate_scan_data(channels[i])
+			scan_data = self.generate_scan_data(prot.id, channels[i])
 			devices[i].prot_exec(2, 1, scan_data) #FIXME ID
 
-	def divide_channels(self, cnt):
-		"""Divide the channels into cnt pieces for scanning"""
-		channels = sorted(list(self.calc_scan_channels()))
-		length = len(channels)
-		return [ channels[i*length // cnt: (i+1)*length // cnt] for i in range(cnt) ]
-
-	def generate_scan_data(self, channels):
-		"""Generate packet data from channel list"""
-		data = bytearray(len(channels)*2)
-		idx = 0
+	def generate_scan_data(self, eu, channels):
+		"""Generate packet data from channel list and prepend which version of the protocol"""
+		data = bytearray(len(channels)*2 + 1)
+		data[0] = eu
+		idx = 1
 		for channel in channels:
 			# 0: channel, 1: FSCTRL0
 			struct.pack_into("<BB", data, idx, channel[0], channel[1])

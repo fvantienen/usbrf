@@ -61,12 +61,14 @@ CFLAGS		+= -Os -g -std=c11 \
 		   -I$(TOOLCHAIN_DIR)/include \
 		   -fno-common $(ARCH_FLAGS) -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
-LDFLAGS		+= --static -Wl,--start-group -lc -lgcc -Wl,--end-group \
-		   -L$(TOOLCHAIN_DIR)/lib \
-		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
-		   $(ARCH_FLAGS) -mfix-cortex-m3-ldrd
+LDFLAGS		+= --static -nostartfiles -lopencm3_stm32f1 \
+       -Wl,--start-group -lc -lgcc -Wl,--end-group \
+       -L$(TOOLCHAIN_DIR)/lib -T$(LDSCRIPT) -Wl,--gc-sections \
+       $(ARCH_FLAGS) -mthumb -mcpu=cortex-m3 -msoft-float -mfix-cortex-m3-ldrd
 
 SEMIHOSTING ?= 0
+
+LDFLAGS +=   -lc -lnosys
 
 ifeq ($(SEMIHOSTING),1)
 $(info **** Semihosting enabled!!! ****)
@@ -74,7 +76,6 @@ CFLAGS          += -DSEMIHOSTING=1
 LDFLAGS         += --specs=rdimon.specs -lrdimon
 else
 CFLAGS          += -DSEMIHOSTING=0
-LDFLAGS         += -lnosys
 endif
 
 PPRZLINK_DIR    ?= $(PROJECT_LIB)/pprzlink/var
@@ -142,7 +143,7 @@ flash: $(BINARY).flash
 
 %.elf: $(OBJS) $(LDSCRIPT) $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f1.a
 	@printf "  LD      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(LD) -o $(*).elf $(OBJS) -lopencm3_stm32f1 $(LDFLAGS)
+	$(Q)$(LD) -o $(*).elf $(OBJS) $(LDFLAGS)
 
 %.o: %.c Makefile
 	@printf "  CC      $(subst $(shell pwd)/,,$(@))\n"

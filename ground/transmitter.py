@@ -15,6 +15,15 @@ class Transmitter():
 		for i in range(20):
 			self.channel_values[i] = 0
 
+	def get_id_str(self):
+		"""Print the ID as a string for the GUI"""
+		return "".join(("%02X" % i) for i in self.id)
+
+	def merge(self, other):
+		"""Merge and parse the data from another transmitter together"""
+		for data in other.recv_data:
+			self.parse_data(data)
+
 class DSMTransmitter(Transmitter):
 
 	def __init__(self, id, dsmx = False, data = None):
@@ -29,9 +38,6 @@ class DSMTransmitter(Transmitter):
 
 		if data != None:
 			self.parse_data(data)
-
-	def get_id_str(self):
-		return "".join(("%02X" % i) for i in self.id)
 
 	def parse_data(self, data):
 		"""Parse an incoming CYRF6936 data packet"""
@@ -60,11 +66,6 @@ class DSMTransmitter(Transmitter):
 		if isinstance(other, DSMTransmitter) and (other.id == self.id or other.id == self.inverse_id()):
 			return True
 		return False
-
-	def merge(self, other):
-		"""Merge and parse the data from another transmitter together"""
-		for data in other.recv_data:
-			self.parse_data(data)
 
 	def inverse_id(self):
 		"""Return the inverse of the current id (only bytes 0, 1 because of checksum)"""
@@ -146,6 +147,51 @@ class DSMTransmitter(Transmitter):
 			if channel != None:
 				self.channel_values[channel[0]] = float(channel[1]) / (1 << resolution)*100
 
+
+class FrSkyXTransmitter(Transmitter):
+
+	def __init__(self, id, eu = False, data = None):
+		Transmitter.__init__(self)
+		self.id = id
+		self.eu = eu
+		self.channels = {}
+		self.prot_name = "FrSkyXEU" if eu else "FrSkyX"
+
+		for i in range(protocol.FrSkyX.CHAN_USED):
+			self.channels[i] = -1
+
+		if data != None:
+			self.parse_data(data)
+
+	def is_same(self, other):
+		"""Check if the transmitter is similar or not based on the ID"""
+		if isinstance(other, FrSkyXTransmitter) and self.eu == other.eu and other.id == self.id:
+			return True
+		return False
+
+	def parse_data(self, data):
+		self.recv_data.append(data)
+		self.recv_cnt += 1
+
+		# Update the channel map
+		idx = data[4] & 0x3F
+		self.channels[idx] = data[-2]
+
+		rssi = data[-4]
+		lqi = data[-3] & 0x7F
+		#if rssi < 200:
+		#print(data)
+		#print(str(idx) + ": " +str(data[-2]) + " (" + str(rssi) + ", " + str(lqi) + ")")
+		print(self.channels)
+
+		# Check if we can hack the device and have the full hopping table
+		self.hackable = True
+		for i in range(protocol.FrSkyX.CHAN_USED):
+			if self.channels[i] == -1:
+				self.hackable = False
+				break
+
+
 class TransmitterManager():
 
 	def __init__(self):
@@ -158,7 +204,6 @@ class TransmitterManager():
 		for tx in self.transmitters:
 			if tx.is_same(new_tx):
 				tx.merge(new_tx)
-				#print tx.channels
 				self.on_change()
 				return
 
