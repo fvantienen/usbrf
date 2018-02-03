@@ -39,6 +39,11 @@ class RFChip():
 				return tx
 		return None
 
+	def start_hacking(self, device, tx):
+		"""Start hacking the transmitter"""
+		hack_data = self.generate_hack_data(tx)
+		device.prot_exec(self.hack_prot, 1, hack_data)
+
 	def divide_channels(self, chans, cnt):
 		"""Divide the channels into cnt pieces for scanning"""
 		channels = sorted(list(chans))
@@ -74,6 +79,7 @@ class CYRF6936(RFChip):
 		self.dmsx = protocol.DSMX()
 		self.dsm2 = protocol.DSM2()
 		self.protocols = [self.dmsx, self.dsm2]
+		self.hack_prot = 1
 
 	def start_scanning(self, devices):
 		"""Start scanning and devide across the devices"""
@@ -83,11 +89,6 @@ class CYRF6936(RFChip):
 		for i in range(dev_cnt):
 			scan_data = self.generate_scan_data(channels[i])
 			devices[i].prot_exec(0, 1, scan_data) #FIXME ID
-
-	def start_hacking(self, device, tx):
-		"""Start hacking the transmitter"""
-		hack_data = self.generate_hack_data(tx)
-		device.prot_exec(1, 1, hack_data)
 
 	def generate_scan_data(self, channels):
 		"""Generate packet data from channel list"""
@@ -149,6 +150,7 @@ class CC2500(RFChip):
 		self.frskyx = protocol.FrSkyX()
 		self.frskyxeu = protocol.FrSkyXEU()
 		self.protocols = [self.frskyx, self.frskyxeu]
+		self.hack_prot = 3
 
 	def start_scanning(self, devices):
 		"""Start scanning and devide across the devices"""
@@ -200,4 +202,18 @@ class CC2500(RFChip):
 			# 0: channel, 1: FSCTRL0
 			struct.pack_into("<BB", data, idx, channel[0], channel[1])
 			idx += 2
+		return data
+
+	def generate_hack_data(self, tx):
+		"""Generate data for hacking"""
+		data = bytearray(protocol.FrSkyX.CHAN_USED + 3)
+		if tx.eu:
+			struct.pack_into("<BBB", data, 0, 3, tx.id[0], tx.id[1])
+		else:
+			struct.pack_into("<BBB", data, 0, 2, tx.id[0], tx.id[1])
+
+		idx = 3
+		for i in tx.channels:
+			struct.pack_into("<B", data, idx, tx.channels[i])
+			idx += 1
 		return data

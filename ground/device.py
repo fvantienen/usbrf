@@ -110,6 +110,8 @@ class DeviceManager(threading.Thread):
 			self.devices.remove(dev)
 
 	def stop(self):
+		for dev in self.devices:
+			dev.stop()
 		self.running = False
 
 	def shutdown(self):

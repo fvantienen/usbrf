@@ -89,15 +89,6 @@ static void protocol_frsky_receiver_init(void) {
 	cc_reset();
 	cc_strobe(CC2500_SIDLE);
 	cc_set_mode(CC2500_TXRX_RX);
-	frsky_set_config(frsky_protocol);
-	cc_write_register(CC2500_MCSM0, 0x18);
-  cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS | CC2500_PKTCTRL1_CRC_AUTOFLUSH | CC2500_PKTCTRL1_FLAG_ADR_CHECK_01);
-
-  // Tune the binding channel
-  frsky_tune_channel(FRSKY_BIND_CHAN);
-  frsky_fscal1[FRSKY_HOP_TABLE_LENGTH] = cc_read_register(CC2500_FSCAL1);
-  frsky_fscal2 = cc_read_register(CC2500_FSCAL2);
-	frsky_fscal3 = cc_read_register(CC2500_FSCAL3);
 
 	// Set the callbacks
 	timer1_register_callback(protocol_frsky_receiver_timer);
@@ -122,6 +113,17 @@ static void protocol_frsky_receiver_deinit(void) {
  */
 static void protocol_frsky_receiver_start(void) {
 	cc_strobe(CC2500_SIDLE);
+
+	// Configure the CC2500
+	frsky_set_config(frsky_protocol);
+	cc_write_register(CC2500_MCSM0, 0x08);
+  cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS | CC2500_PKTCTRL1_CRC_AUTOFLUSH | CC2500_PKTCTRL1_FLAG_ADR_CHECK_01);
+
+  // Tune the binding channel
+  frsky_tune_channel(FRSKY_BIND_CHAN);
+  frsky_fscal1[FRSKY_HOP_TABLE_LENGTH] = cc_read_register(CC2500_FSCAL1);
+  frsky_fscal2 = cc_read_register(CC2500_FSCAL2);
+	frsky_fscal3 = cc_read_register(CC2500_FSCAL3);
 
 	// Set the correct packet length (length + 2 status bytes appended)
 	if(frsky_protocol == FRSKYX_EU)
@@ -168,7 +170,7 @@ static void protocol_frsky_receiver_stop(void) {
 	// Stop the timer and put the CC2500 to idle
 	cc_strobe(CC2500_SIDLE);
 	timer1_stop();
-	console_print("\r\nFrSky receiver stopped...");
+	console_print("\r\nFrSky Receiver stopped...");
 }
 
 /**
@@ -221,7 +223,6 @@ static void protocol_frsky_receiver_timer(void) {
 			cc_strobe(CC2500_SFRX);
 			cc_strobe(CC2500_SRX);
 			timer1_set(FRSKY_RECV_TIME);
-			console_print("B");
 			break;
 
 		/* Fine tuning the crystal */
@@ -231,7 +232,6 @@ static void protocol_frsky_receiver_timer(void) {
 				frsky_tune = (frsky_tune_max+frsky_tune_min)/2;
 				config.cc_fsctrl0 = frsky_tune;
 				config.cc_tuned = true;
-				console_print("\r\nD%d", frsky_tune);
 
 				// If we received the full hopping table go to Sync
 				if(frsky_bind_table == ((1 << FRSKY_HOP_TABLE_PKTS) - 1)) {
@@ -296,16 +296,14 @@ static void protocol_frsky_receiver_receive(uint8_t len) {
 		/* Tuning the crystal based on binding packets */
 		case FRSKY_RECV_TUNE:
 		case FRSKY_RECV_FINETUNE:
-			console_print("A");
 			// Check if the binding packet is valid
 			if(protocol_frsky_parse_bind(data)) {
+				LED_TOGGLE(LED_RX);
+
 				if(frsky_tune < frsky_tune_min)
-				frsky_tune_min = frsky_tune;
+					frsky_tune_min = frsky_tune;
 				if(frsky_tune > frsky_tune_max)
 					frsky_tune_max = frsky_tune;
-
-				console_print("\r\nR%d %d %d", frsky_tune, data[0], len);
-				LED_TOGGLE(LED_RX);
 			}
 
 			cc_strobe(CC2500_SRX);
@@ -339,8 +337,7 @@ static void protocol_frsky_receiver_receive(uint8_t len) {
 				protocol_frsky_receiver_next();
 				cc_strobe(CC2500_SFRX);
 				timer1_set(FRSKY_RECV_TIME);
-			} else
-				console_print("E");
+			}
 			cc_strobe(CC2500_SRX);
 			break;
 
@@ -463,8 +460,8 @@ static void protocol_frsky_start_sync(void) {
 	protocol_frsky_receiver_next();
 
 	// Start receiving
-	cc_strobe(CC2500_SRX);
 	frsky_receiver_state = FRSKY_RECV_SYNC;
+	cc_strobe(CC2500_SRX);
 	timer1_set(FRSKY_RECV_TIME);
 }
 
@@ -477,7 +474,8 @@ static void protocol_frsky_start_bind(void) {
 	cc_write_register(CC2500_CHANNR, FRSKY_BIND_CHAN);
 	cc_write_register(CC2500_FSCAL1, frsky_fscal1[FRSKY_HOP_TABLE_LENGTH]);
 
-	cc_strobe(CC2500_SRX);
+	// Start receiving
 	frsky_receiver_state = FRSKY_RECV_BIND;
+	cc_strobe(CC2500_SRX);
 	timer1_set(FRSKY_RECV_TIME);
 }

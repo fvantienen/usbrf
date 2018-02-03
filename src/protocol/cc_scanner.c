@@ -124,7 +124,7 @@ static void protocol_cc_scanner_start(void) {
 	cc_write_register(CC2500_FSCTRL0, config.cc_fsctrl0 + cc_scan_args[1]);
 	cc_strobe(CC2500_SFRX);
 	cc_strobe(CC2500_SRX);
-	timer1_set(FRSKY_SEND_TIME*FRSKYX_USED_CHAN);
+	timer1_set(FRSKY_SEND_TIME * (FRSKYX_USED_CHAN+1));
 
 	console_print("\r\nCC Scanner started %d...", frsky_protocol);
 }
@@ -188,7 +188,7 @@ static void protocol_cc_scanner_parse_arg(uint8_t type, uint8_t *arg, uint16_t l
 
 static void protocol_cc_scanner_timer(void) {
 	protocol_cc_scanner_next();
-	timer1_set(FRSKY_SEND_TIME*FRSKYX_USED_CHAN);
+	timer1_set(FRSKY_SEND_TIME * (FRSKYX_USED_CHAN+1));
 }
 
 static void protocol_cc_scanner_receive(uint8_t len) {
@@ -209,7 +209,7 @@ static void protocol_cc_scanner_receive(uint8_t len) {
 	cc_read_data(&packet[1], packet_len+2);
 
 	packet[packet_len+3] = cc_scan_args[cc_scan_idx*2];
-	packet[packet_len+4] = cc_read_register(CC2500_CHANNR);
+	packet[packet_len+4] = cc_scan_args[cc_scan_idx*2 + 1];
 
 	uint8_t chip_id = 1;
 	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, packet_len+5, packet);

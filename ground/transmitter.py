@@ -24,6 +24,12 @@ class Transmitter():
 		for data in other.recv_data:
 			self.parse_data(data)
 
+		print(self.channels)
+
+	def start_hacking(self, device):
+		"""Start hacking the transmitter"""
+		self.rfchip.start_hacking(device, self)
+
 class DSMTransmitter(Transmitter):
 
 	def __init__(self, id, dsmx = False, data = None):
@@ -70,10 +76,6 @@ class DSMTransmitter(Transmitter):
 	def inverse_id(self):
 		"""Return the inverse of the current id (only bytes 0, 1 because of checksum)"""
 		return [(~self.id[0]) & 0xFF, (~self.id[1]) & 0xFF, self.id[2], self.id[3]]
-
-	def start_hacking(self, device):
-		"""Start hacking the transmitter"""
-		self.rfchip.start_hacking(device, self)
 
 	def check_hackable(self):
 		"""Check if we are able to attack the device and thus have enough information"""
@@ -177,19 +179,18 @@ class FrSkyXTransmitter(Transmitter):
 		idx = data[4] & 0x3F
 		self.channels[idx] = data[-2]
 
+		# TODO: use?
 		rssi = data[-4]
 		lqi = data[-3] & 0x7F
-		#if rssi < 200:
-		#print(data)
-		#print(str(idx) + ": " +str(data[-2]) + " (" + str(rssi) + ", " + str(lqi) + ")")
-		print(self.channels)
 
 		# Check if we can hack the device and have the full hopping table
-		self.hackable = True
+		not_found = 0
 		for i in range(protocol.FrSkyX.CHAN_USED):
 			if self.channels[i] == -1:
-				self.hackable = False
-				break
+				not_found = not_found + 1
+
+		if not_found == 0:
+			self.hackable = True
 
 
 class TransmitterManager():

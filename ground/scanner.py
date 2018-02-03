@@ -74,11 +74,16 @@ class Scanner():
 
 		while len(tms) != 0:
 			tx = tms[0]
+			done = False
 			for dev in devices:
 				if tx.rfchip.__class__ in dev.get_chips():
 					tx.start_hacking(dev)
 					devices.remove(dev)
+					done = True
 					break
+
+			if not done:
+				print('Could not start hacking on ' + tx.get_id_str() + ', not enough devices!')
 			tms.remove(tx)
 
 		print('Starting hacking...')
@@ -219,7 +224,8 @@ class ScannerManagerBox(Gtk.Box):
 		"""Called by GTK main thread to show new transmitters"""
 		self.tx_liststore.clear()
 		for tx in self.scanner.tm.transmitters:
-			self.tx_liststore.append([tx.prot_name, tx.get_id_str(), tx.hackable, tx.recv_cnt, tx.do_hack, int(tx.channel_values[0]), int(tx.channel_values[1]), int(tx.channel_values[2]), int(tx.channel_values[3])])
+			if tx.recv_cnt > 2 or tx.hackable == True:
+				self.tx_liststore.append([tx.prot_name, tx.get_id_str(), tx.hackable, tx.recv_cnt, tx.do_hack, int(tx.channel_values[0]), int(tx.channel_values[1]), int(tx.channel_values[2]), int(tx.channel_values[3])])
 
 	def on_hack_toggle(self, widget, path):
 		self.scanner.tm.hack_toggle(self.tx_liststore[path][0], self.tx_liststore[path][1])

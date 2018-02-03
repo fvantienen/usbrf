@@ -155,7 +155,7 @@ class DSM2(Protocol):
 		return None
 
 class FrSkyX(Protocol):
-	CHAN_TIME = 9000*47																# Amount of time before reapearance per channel (us)
+	CHAN_TIME = 9000*48																# Amount of time before reapearance per channel (us)
 	CHAN_USED = 47																		# Amount of channels in use
 	CHAN_MIN = 1 																			# Lowest occuring channel number
 	CHAN_MAX = 235																		# Highest occuring channel number
