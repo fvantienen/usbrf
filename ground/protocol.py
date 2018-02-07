@@ -222,6 +222,8 @@ class FrSkyX(Protocol):
 		"""Parse a message from the CC2500 and return a possible TX"""
 
 		# Check if the length is correct
+		if msg[0] == 14:
+			print(msg)
 		if msg[0] != self.packet_len:
 			return None
 
@@ -234,6 +236,13 @@ class FrSkyX(Protocol):
 		packet_crc = (msg[self.packet_len-1] << 8) | msg[self.packet_len]
 		if calc_crc != packet_crc:
 			return None
+
+		#print(msg)
+		idx = msg[4] & 0x3F
+		chan = msg[-2]
+		recv_seq = msg[21] >> 4
+		send_seq = msg[21] & 0xF
+		#print(str(idx) + ': ' + str(chan) + " ("+str(recv_seq)+", "+str(send_seq)+")")
 
 		id = msg[1:3]
 		return transmitter.FrSkyXTransmitter(id, self.eu, msg)

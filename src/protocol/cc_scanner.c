@@ -111,7 +111,7 @@ static void protocol_cc_scanner_deinit(void) {
 }
 
 /**
- * Configure the CYRF and start scanning
+ * Configure the CC2500 and start scanning
  */
 static void protocol_cc_scanner_start(void) {
 	cc_scan_idx = 0;

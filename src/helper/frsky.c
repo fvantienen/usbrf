@@ -119,7 +119,7 @@ static const uint8_t frskyx_conf[]= {
 static const uint8_t frskyx_eu_conf[]= {
 	/*02_IOCFG0*/  	 0x06,
 	/*00_IOCFG2*/  	 0x06,
-	/*17_MCSM1*/   	 0x0E,
+	/*17_MCSM1*/   	 0x0C,
 	/*18_MCSM0*/   	 0x18,
 	/*06_PKTLEN*/  	 0x23,
 	/*07_PKTCTRL1*/	 0x04,

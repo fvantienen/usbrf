@@ -24,7 +24,8 @@ class Transmitter():
 		for data in other.recv_data:
 			self.parse_data(data)
 
-		print(self.channels)
+		#print(self.channels)
+		#print(self.channel_values)
 
 	def start_hacking(self, device):
 		"""Start hacking the transmitter"""
@@ -160,7 +161,7 @@ class FrSkyXTransmitter(Transmitter):
 		self.prot_name = "FrSkyXEU" if eu else "FrSkyX"
 
 		for i in range(protocol.FrSkyX.CHAN_USED):
-			self.channels[i] = -1
+			self.channels[i] = (-1, 128)
 
 		if data != None:
 			self.parse_data(data)
@@ -175,22 +176,50 @@ class FrSkyXTransmitter(Transmitter):
 		self.recv_data.append(data)
 		self.recv_cnt += 1
 
+		# Get information from the CC2500
+		rssi = (data[-4]-256)/2-72 if data[-4] >= 128 else data[-4]/2-72
+		lqi = data[-3] & 0x7F
+
 		# Update the channel map
 		idx = data[4] & 0x3F
-		self.channels[idx] = data[-2]
-
-		# TODO: use?
-		rssi = data[-4]
-		lqi = data[-3] & 0x7F
+		channel = data[-2]
+		if lqi < self.channels[idx][1]:
+			self.channels[idx] = (channel, lqi)
 
 		# Check if we can hack the device and have the full hopping table
 		not_found = 0
 		for i in range(protocol.FrSkyX.CHAN_USED):
-			if self.channels[i] == -1:
+			if self.channels[i][0] == -1:
 				not_found = not_found + 1
 
 		if not_found == 0:
 			self.hackable = True
+			test = {0: 3, 1: 183, 2: 128, 3: 73, 4: 18, 5: 198, 6: 143, 7: 90, 8: 33, 9: 213, 10: 158, 11: 103, 12: 48, 13: 228, 14: 175, 15: 118, 16: 63, 17: 8, 18: 188, 19: 133, 20: 78, 21: 23, 22: 203, 23: 148, 24: 93, 25: 38, 26: 221, 27: 163, 28: 108, 29: 53, 30: 233, 31: 178, 32: 123, 33: 68, 34: 13, 35: 193, 36: 138, 37: 83, 38: 28, 39: 208, 40: 153, 41: 98, 42: 45, 43: 223, 44: 168, 45: 113, 46: 58}
+			wrong = 0
+			for i in test:
+				if self.channels[i][0] != test[i]:
+					wrong += 1
+					print('W ' + str(i) + ': ' + str(self.channels[i][0]) + ' ' + str(test[i]))
+			print(self.channels)
+			print('WRONG: ' + str(wrong));
+
+		# Parse the RC channels (Check if not failsafe values)
+		
+		if data[7] == 0:
+			for i in range(0, 12, 3):
+				chan0 = data[i+9] + ((data[i+10] & 0x0F) << 8)
+				chan1 = (data[i+10] >> 4) + (data[i+11] << 4)
+
+				idx = i/3*2
+				if chan0 & 0x800:
+					self.channel_values[idx+8] = float(chan0 - 0x800) / 2047 * 100
+				else:
+					self.channel_values[idx] = float(chan0) / 2047 * 100
+
+				if chan1 & 0x800:
+					self.channel_values[idx+9] = float(chan1 - 0x800) / 2047 * 100
+				else:
+					self.channel_values[idx+1] = float(chan1) /2047 * 100
 
 
 class TransmitterManager():

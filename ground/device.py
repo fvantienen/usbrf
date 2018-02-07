@@ -45,7 +45,7 @@ class Device():
 			offset_end = offset+200 if offset+200 < data_len else data_len
 			msg = PprzMessage('usbrf', 'PROT_EXEC')
 			msg['id'] = prot_id
-			msg['type'] = start #FIXME
+			msg['type'] = start
 			msg['arg_offset'] = offset
 			msg['arg_size'] = data_len
 			msg['arg_data'] = data[offset:offset_end]

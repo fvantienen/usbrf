@@ -36,6 +36,7 @@ cc_on_event _cc_send_callback = NULL;
 
 /* Internal functions and settings */
 static void cc_process(void);
+static uint8_t cc_tx_bytes = 0;
 
 /**
  * Initialize the CC2500
@@ -68,6 +69,8 @@ void cc_run(void) {
  */
 static void cc_process(void) {
 	cc_handle_overflows();
+
+	/* Handle RX callback */
 	uint8_t len = cc_read_register(CC2500_RXBYTES) & 0x7F;
 	if(len && len != 1) {
 		uint8_t len2 = cc_read_register(CC2500_RXBYTES) & 0x7F;
@@ -75,26 +78,20 @@ static void cc_process(void) {
 			_cc_recv_callback(len);
 		}
 	}
-	/*uint8_t tx_irq_status, rx_irq_status;
 
-	// Read the transmit IRQ
-	tx_irq_status = cyrf_read_register(CYRF_TX_IRQ_STATUS);
-	if((tx_irq_status & 0x3) == 0x2)
-		tx_irq_status |= cyrf_read_register(CYRF_TX_IRQ_STATUS);
-	if (((tx_irq_status & CYRF_TXC_IRQ))
-			&& _cyrf_send_callback != NULL) {
-		_cyrf_send_callback((tx_irq_status & CYRF_TXE_IRQ) > 0x0);
+	/* Handle TX callback */
+	if(cc_tx_bytes > 0) {
+		uint8_t txlen = cc_read_register(CC2500_TXBYTES) & 0x7F;
+		if(txlen == 0) {
+			txlen = cc_read_register(CC2500_TXBYTES) & 0x7F;
+			if(txlen == 0) {
+				cc_tx_bytes = 0;
+
+				if(_cc_send_callback != NULL)
+					_cc_send_callback(0);
+			}
+		}
 	}
-
-	// Read the read IRQ
-	rx_irq_status = cyrf_read_register(CYRF_RX_IRQ_STATUS);
-	if((rx_irq_status & 0x3) == 0x2)
-		rx_irq_status |= cyrf_read_register(CYRF_RX_IRQ_STATUS);
-	if (((rx_irq_status & CYRF_RXC_IRQ))
-			&& _cyrf_recv_callback != NULL) {
-		cyrf_write_register(CYRF_RX_IRQ_STATUS, 0x80); // need to set RXOW before data read
-		_cyrf_recv_callback((rx_irq_status & CYRF_RXE_IRQ) > 0x0);
-	}*/
 }
 
 /**
@@ -223,6 +220,7 @@ void cc_strobe(uint8_t cmd) {
 void cc_write_data(uint8_t *packet, uint8_t length) {
 	cc_strobe(CC2500_SFTX);
 	cc_write_block(CC2500_TXFIFO, packet, length);
+	cc_tx_bytes = length;
 	cc_strobe(CC2500_STX);
 }
 

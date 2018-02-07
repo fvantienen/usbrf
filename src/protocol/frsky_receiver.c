@@ -109,7 +109,7 @@ static void protocol_frsky_receiver_deinit(void) {
 }
 
 /**
- * Configure the CYRF and start scanning
+ * Configure the CC2500 and start receiving
  */
 static void protocol_frsky_receiver_start(void) {
 	cc_strobe(CC2500_SIDLE);

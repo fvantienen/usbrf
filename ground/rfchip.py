@@ -214,6 +214,6 @@ class CC2500(RFChip):
 
 		idx = 3
 		for i in tx.channels:
-			struct.pack_into("<B", data, idx, tx.channels[i])
+			struct.pack_into("<B", data, idx, tx.channels[i][0])
 			idx += 1
 		return data
