@@ -161,7 +161,7 @@ enum cc2500_mode_t {
     CC2500_TXRX_RX
 };
 
-/* External functions */
+/* External functions and variables */
 void cc_init(void);
 void cc_run(void);
 

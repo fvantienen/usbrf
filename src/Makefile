@@ -24,7 +24,7 @@ OBJS += modules/led.o modules/spi.o modules/button.o modules/timer.o modules/cdc
 OBJS += modules/console.o modules/ring.o modules/counter.o modules/ant_switch.o modules/pprzlink.o modules/protocol.o helper/crc.o helper/dsm.o helper/frsky.o
 
 # The different kind of protocols available
-OBJS += protocol/cyrf_scanner.o protocol/dsm_hack.o protocol/cc_scanner.o protocol/frsky_hack.o protocol/frsky_receiver.o
+OBJS += protocol/cyrf_scanner.o protocol/dsm_hack.o protocol/cc_scanner.o protocol/frsky_hack.o protocol/frsky_receiver.o protocol/frsky_transmitter.o
 
 # Enable pprzlink
 PPRZLINK = 1

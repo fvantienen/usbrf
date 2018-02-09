@@ -63,7 +63,7 @@ void cyrf_init(void) {
 	exti_enable_request(CYRF_DEV_IRQ_EXTI);
 
 	// Enable the IRQ NVIC
-	nvic_set_priority(CYRF_DEV_IRQ_NVIC, 1);
+	nvic_set_priority(CYRF_DEV_IRQ_NVIC, 2);
 	nvic_enable_irq(CYRF_DEV_IRQ_NVIC);
 #endif
 
@@ -83,11 +83,7 @@ void cyrf_init(void) {
  */
 void cyrf_run(void) {
 #ifndef CYRF_DEV_IRQ_ISR
-	static uint32_t start_ticks = 0;
-	if(start_ticks + counter_get_ticks_of_us(200) <= counter_get_ticks()) {
-		start_ticks = counter_get_ticks();
-		cyrf_process();
-	}
+	cyrf_process();
 #endif
 }
 

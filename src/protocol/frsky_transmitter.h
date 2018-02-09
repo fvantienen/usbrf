@@ -17,25 +17,17 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CONFIG_ITEM
-#define CONFIG_ITEM(...) {}
-#endif
-#ifndef CONFIG_ARRAY
-#define CONFIG_ARRAY(...) {}
-#endif
-#define _A(...) __VA_ARGS__
+#ifndef FRSKY_TRANSMITTER_H_
+#define FRSKY_TRANSMITTER_H_
 
-// General items
-CONFIG_ITEM(version, float, "%0.3f", 2.001)
-CONFIG_ITEM(debug, bool, "%d", false)
+#include "modules/protocol.h"
 
-// CYRF6936 items
-CONFIG_ARRAY(spektrum_bind_id, uint8_t, 4, "%02X", _A({0, 0, 0, 0}))
+extern struct protocol_t protocol_frsky_transmitter;
 
-// CC2500 items
-CONFIG_ITEM(cc_tuned, bool, "%d", false)
-CONFIG_ITEM(cc_fsctrl0, int8_t, "%d", 0)
-CONFIG_ARRAY(frsky_bind_id, uint8_t, 2, "%02X", _A({0, 0}))
-CONFIG_ARRAY(frsky_hop_table, uint8_t, 50, "%03d ", _A({0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}))
-CONFIG_ITEM(frsky_bound, bool, "%d", false)
-CONFIG_ITEM(frsky_offset, uint8_t, "%d", 200)
+/* The internal states of the FrSky transmitter protocol */
+enum frsky_transmitter_state_t {
+	FRSKY_TRX_SEND,			/**< The transmitter is sending the data packet */
+//	FRSKY_TRX_TELEM,		/**< The transmitter is waiting for a telemetry packet */
+};
+
+#endif /* FRSKY_TRANSMITTER_H_ */

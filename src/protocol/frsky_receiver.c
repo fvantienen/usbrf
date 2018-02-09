@@ -151,8 +151,10 @@ static void protocol_frsky_receiver_start(void) {
 
 		cc_write_register(CC2500_FSCTRL0, frsky_tune);
 		cc_write_register(CC2500_ADDR, FRSKY_BIND_ADDR);
-		cc_write_register(CC2500_CHANNR, FRSKY_BIND_CHAN);
 		cc_write_register(CC2500_FSCAL1, frsky_fscal1[FRSKY_HOP_TABLE_LENGTH]);
+		cc_write_register(CC2500_FSCAL2, frsky_fscal2);
+		cc_write_register(CC2500_FSCAL3, frsky_fscal3);
+		cc_write_register(CC2500_CHANNR, FRSKY_BIND_CHAN);
 
 		frsky_receiver_state = FRSKY_RECV_TUNE;
 		cc_strobe(CC2500_SRX);
@@ -351,8 +353,10 @@ static void protocol_frsky_receiver_next(void) {
 	frsky_hop_idx = (frsky_hop_idx + frsky_chanskip) % FRSKY_HOP_TABLE_LENGTH;
 	cc_strobe(CC2500_SIDLE);
 
-	cc_write_register(CC2500_CHANNR, config.frsky_hop_table[frsky_hop_idx]);
 	cc_write_register(CC2500_FSCAL1, frsky_fscal1[frsky_hop_idx]);
+	cc_write_register(CC2500_FSCAL2, frsky_fscal2);
+	cc_write_register(CC2500_FSCAL3, frsky_fscal3);
+	cc_write_register(CC2500_CHANNR, config.frsky_hop_table[frsky_hop_idx]);
 }
 
 /**
@@ -452,8 +456,6 @@ static void protocol_frsky_start_sync(void) {
 
 	// Calibrate all channels
 	frsky_tune_channels(config.frsky_hop_table, FRSKY_HOP_TABLE_LENGTH, frsky_fscal1, &frsky_fscal2, &frsky_fscal3);
-	cc_write_register(CC2500_FSCAL2, frsky_fscal2);
-	cc_write_register(CC2500_FSCAL3, frsky_fscal3);
 
 	// Go to the first channel
 	frsky_hop_idx = FRSKY_HOP_TABLE_LENGTH-1;
@@ -471,8 +473,10 @@ static void protocol_frsky_start_sync(void) {
 static void protocol_frsky_start_bind(void) {
 	cc_write_register(CC2500_FSCTRL0, config.cc_fsctrl0);
 	cc_write_register(CC2500_ADDR, FRSKY_BIND_ADDR);
-	cc_write_register(CC2500_CHANNR, FRSKY_BIND_CHAN);
 	cc_write_register(CC2500_FSCAL1, frsky_fscal1[FRSKY_HOP_TABLE_LENGTH]);
+	cc_write_register(CC2500_FSCAL2, frsky_fscal2);
+	cc_write_register(CC2500_FSCAL3, frsky_fscal3);
+	cc_write_register(CC2500_CHANNR, FRSKY_BIND_CHAN);
 
 	// Start receiving
 	frsky_receiver_state = FRSKY_RECV_BIND;

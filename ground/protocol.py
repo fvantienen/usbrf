@@ -14,7 +14,7 @@ class ProtState(IntEnum):
 class Protocol():
 
 	def __init__(self, name):
-		self.state = ProtState.AVERAGE
+		self.state = ProtState.DISABLED
 		self.name = name
 		self.scan_times = {}
 		self.channels = {}
@@ -222,19 +222,26 @@ class FrSkyX(Protocol):
 		"""Parse a message from the CC2500 and return a possible TX"""
 
 		# Check if the length is correct
-		if msg[0] == 14:
-			print(msg)
+		# TODO: Also use telemetry packets
+		#if msg[0] == 14:
+		#	print(msg)
 		if msg[0] != self.packet_len:
+			print('1')
+			print(msg)
 			return None
 
 		# Check if the CC2500 CRC is correct
 		if (msg[self.packet_len+2] & 0x80) != 0x80:
+			print('2')
+			print(msg)
 			return None
 
 		# Check the inner CRC
 		calc_crc = self.crc(msg[3:self.packet_len-1])
 		packet_crc = (msg[self.packet_len-1] << 8) | msg[self.packet_len]
 		if calc_crc != packet_crc:
+			print('3')
+			print(msg)
 			return None
 
 		#print(msg)

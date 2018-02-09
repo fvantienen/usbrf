@@ -25,8 +25,9 @@
 
 /* All times are in microseconds divided by 10 */
 #define FRSKY_RECV_TIME			1100				/**< Time to wait for an FrSky packet */
-#define FRSKY_SEND_TIME			900					/**< Time between 2 consecutive packets */ 
-#define FRSKY_TELEM_TIME    500					/**< Time to wait for a telemetry message */
+#define FRSKY_TLMR_TIME     500					/**< Time to wait for a telemetry message */
+#define FRSKY_SEND_TIME			900					/**< Time between 2 consecutive data packets */ 
+#define FRSKY_TLMS_TIME			350					/**< Time between data and telemetry packet */
 #define FRSKYX_USED_CHAN		47					/**< Amount of channels used by FrSkyX */
 
 /* General defines */

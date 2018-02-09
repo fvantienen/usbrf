@@ -24,6 +24,7 @@
 #include "modules/led.h"
 #include "modules/config.h"
 #include "modules/timer.h"
+#include "modules/counter.h"
 #include "modules/ant_switch.h"
 #include "modules/cc2500.h"
 #include "modules/pprzlink.h"
@@ -181,7 +182,7 @@ static void protocol_cc_scanner_parse_arg(uint8_t type, uint8_t *arg, uint16_t l
 	}
 
 	// Save the arguments scanning list
-	cc_scan_args_len = tot_len;
+	cc_scan_args_len = tot_len-1;
 	memcpy(cc_scan_args + offset, arg + arg_offset, len - arg_offset);
 }
 
@@ -193,9 +194,11 @@ static void protocol_cc_scanner_timer(void) {
 
 static void protocol_cc_scanner_receive(uint8_t len) {
 	static uint8_t packet_len = 0;
+	static uint32_t ticks = 0;
 
 	/* Check if we receieved a packet length */
 	if(packet_len == 0) {
+		ticks = counter_status.ticks;
 		cc_read_data(&packet_len, 1);
 		len--;
 	}

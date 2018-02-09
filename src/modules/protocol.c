@@ -30,6 +30,7 @@
 #include "protocol/cc_scanner.h"
 #include "protocol/frsky_hack.h"
 #include "protocol/frsky_receiver.h"
+#include "protocol/frsky_transmitter.h"
 
 /* All protocol information */
 static struct protocol_t *protocols[] = {
@@ -38,6 +39,7 @@ static struct protocol_t *protocols[] = {
 	&protocol_cc_scanner,
 	&protocol_frsky_hack,
 	&protocol_frsky_receiver,
+	&protocol_frsky_transmitter,
 };
 static const int protocols_nb = sizeof(protocols) / sizeof(protocols[0]);
 static int protocol_cur_idx;

@@ -71,9 +71,13 @@ static uint8_t frsky_target_id[2];																	/**< The target to hack */
 static uint8_t frsky_hop_table[FRSKY_HOP_TABLE_LENGTH];							/**< The hopping table of the target */
 static uint8_t succ_packets = 0;																		/**< Amount of succesfull packets received in a row */
 static uint8_t frsky_packet[FRSKY_PACKET_LENGTH_EU+5];							/**< Transmitting FrSky packet (EU is longest) */
-static uint32_t send_time = 0;
-static uint8_t send_seq = 0x8;
-static uint8_t recv_seq = 0;
+static uint8_t send_seq = 0x8;																			/**< The transmitter telemetry send sequencing */
+static uint8_t recv_seq = 0;																				/**< The transmitter telemetry receive sequencing */
+static uint8_t unk_num = 0x2;
+static uint8_t rx_num = 1;
+static bool has_telemetry = false;
+static uint8_t missed_telem = 0;
+static bool recvd_telem = false;
 
 /**
  * Configure the CC2500 chip and antenna switcher
@@ -137,18 +141,23 @@ static void protocol_frsky_hack_start(void) {
 
 	// Calibrate all channels
 	frsky_tune_channels(frsky_hop_table, FRSKY_HOP_TABLE_LENGTH, frsky_fscal1, &frsky_fscal2, &frsky_fscal3);
-	cc_write_register(CC2500_FSCAL2, frsky_fscal2);
-	cc_write_register(CC2500_FSCAL3, frsky_fscal3);
 
 	// Go to the first channel
 	frsky_hop_idx = FRSKY_HOP_TABLE_LENGTH-1;
 	protocol_frsky_hack_next();
 
 	// Start receiving
+	send_seq = 0x8;
+	recv_seq = 0;
+	unk_num = 0x2;
+	rx_num = 1;
+	has_telemetry = false;
+	missed_telem = 0;
 	frsky_hack_state = FRSKY_HACK_SYNC;
 	cc_strobe(CC2500_SRX);
 	timer1_set(FRSKY_RECV_TIME);
 	console_print("\r\nFrSky Hack started...");
+
 }
 
 /**
@@ -189,18 +198,25 @@ static void protocol_frsky_hack_parse_arg(uint8_t type, uint8_t *arg, uint16_t l
 	}
 }
 
+	static uint32_t ticks = 0;
+	static uint32_t old_ticks = 0;
 
 static void protocol_frsky_hack_timer(void) {
+	ticks = counter_status.ticks;
 	switch(frsky_hack_state) {
 
 		/* Trying to synchronize with the transmitter */
 		case FRSKY_HACK_SYNC:
 			succ_packets = 0;
+			//send_seq = 0x8;
+			recv_seq = 0;
+			missed_telem = 0;
+			recvd_telem = false;
 			protocol_frsky_hack_next();
 			cc_strobe(CC2500_SFRX);
 			cc_strobe(CC2500_SRX);
-			timer1_set(FRSKY_RECV_TIME);
-			console_print("G");
+			timer1_set(FRSKY_RECV_TIME*2);
+			//console_print("G");
 			break;
 
 		/* We missed a packet during receiving */
@@ -215,16 +231,28 @@ static void protocol_frsky_hack_timer(void) {
 
 		/* Sending and taking over control */
 		case FRSKY_HACK_SEND:
-			timer1_set(FRSKY_SEND_TIME-20);
-			cc_strobe(CC2500_SIDLE);
+			if(has_telemetry && !recvd_telem)
+				missed_telem++;
+
+			/*if(missed_telem > 50) {
+				frsky_hack_state = FRSKY_HACK_SYNC;
+				cc_set_mode(CC2500_TXRX_RX);
+				timer1_set(10);
+				break;
+			}*/
+			recvd_telem = false;
+
+			timer1_set(FRSKY_SEND_TIME);
 			cc_set_mode(CC2500_TXRX_TX);
 			protocol_frsky_hack_next();
-			cc_set_power(5);
+			cc_set_power(7);
 			cc_strobe(CC2500_SFRX);
 
-			cc_strobe(CC2500_SIDLE);
 			protocol_frsky_build_packet();
+			cc_strobe(CC2500_SIDLE);
 			cc_write_data(frsky_packet, frsky_packet[0]+1);	
+			console_print("\r\nS %d %d %d", ticks-old_ticks, send_seq, recv_seq);
+			old_ticks = ticks;
 			break;
 	}
 	
@@ -235,6 +263,7 @@ static void protocol_frsky_hack_receive(uint8_t len) {
 
 	/* Check if we receieved a packet length */
 	if(packet_len == 0) {
+		ticks = counter_status.ticks;
 		cc_read_data(&packet_len, 1);
 		len--;
 	}
@@ -243,8 +272,7 @@ static void protocol_frsky_hack_receive(uint8_t len) {
 	if(len < packet_len+2)
 		return;
 
-	send_time = timer1_get_time();
-	uint32_t ticks = counter_status.ticks;
+	
 	uint8_t data[packet_len + 3 + 2];		// Added 2 bytes for PC transmission of channel and fsctrl0
 	data[0] = packet_len;
 	cc_read_data(&data[1], packet_len+2);
@@ -263,47 +291,51 @@ static void protocol_frsky_hack_receive(uint8_t len) {
 
 				// Whenever there is no telemetry hop to the next channel (else wait for telemetry)
 				if(send_seq == 0x8) {
-					// if(succ_packets > 2) {
-					// 	frsky_hack_state = FRSKY_HACK_SEND;
-					// 	timer1_set(FRSKY_SEND_TIME-50);
-					// 	console_print("\r\nTakeover!");
-					// } else {
+					console_print("\r\nR %d", ticks-old_ticks);
+					if(succ_packets > 6) {
+						has_telemetry = false;
+						frsky_hack_state = FRSKY_HACK_SEND;
+						missed_telem = 0;
+						timer1_set(FRSKY_SEND_TIME-200);
+						console_print("\r\nTakeover!");
+					} else {
 						protocol_frsky_hack_next();
 						timer1_stop();
 						timer1_set(FRSKY_RECV_TIME);
 						frsky_hack_state = FRSKY_HACK_RECV;
-						console_print("\r\nR %d", ticks);
-					// }
+					}
 				}
 				// Wait for telemetry
 				else {
-					//protocol_frsky_hack_next();
 					timer1_stop();
-					timer1_set(FRSKY_TELEM_TIME); // Early timeout because telemetry isn't needed
+					timer1_set(FRSKY_TLMR_TIME);
 					frsky_hack_state = FRSKY_HACK_RECV;
-					console_print("\r\nA %d", ticks);
+					console_print("\r\nA %d %d %d %02X%02X%02X", ticks-old_ticks, send_seq, recv_seq, data[9], data[10], data[11]);
 				}
 			}
 			// Check if the packet is a valid telemetry packet
 			else if(protocol_frsky_parse_telem(data)) {
+				timer1_stop();
 				LED_TOGGLE(LED_RX);
 
 				if(succ_packets < 200)
 					succ_packets++;
 
-				console_print("\r\nT %d", ticks);
-				// if(succ_packets > 2) {
-				// 	frsky_hack_state = FRSKY_HACK_SEND;
-				// 	timer1_set(50);
-				// 	console_print("\r\nTakeover!");
-				// } else {
+				//console_print("\r\nT %d %d %d", ticks-old_ticks, send_seq, recv_seq);
+				if(succ_packets > 4) {
+					has_telemetry = true;
+					recvd_telem = true;
+					missed_telem = 0;
+					frsky_hack_state = FRSKY_HACK_SEND;
+					timer1_set(config.frsky_offset);
+					console_print("\r\nTakeover!");
+				} else {
 					protocol_frsky_hack_next();
-					timer1_stop();
-					timer1_set(FRSKY_RECV_TIME);
+					timer1_set(FRSKY_RECV_TIME - FRSKY_TLMS_TIME);
 					frsky_hack_state = FRSKY_HACK_RECV;
-				// }
+				}
 			} else {
-				console_print("\r\nF %d", ticks);
+				console_print("\r\nF %d", ticks-old_ticks);
 			}
 
 			// Start receiving again
@@ -315,21 +347,37 @@ static void protocol_frsky_hack_receive(uint8_t len) {
 		/* Receive telemetry if possible */
 		case FRSKY_HACK_SEND:
 			if(protocol_frsky_parse_telem(data)) {
+				has_telemetry = true;
+				recvd_telem = true;
+				missed_telem = 0;
 				LED_TOGGLE(LED_RX);
-				timer1_set(50); // Adjust timer based on received telemetry
+				//timer1_stop();
+				//timer1_set(10); // Adjust timer based on received telemetry
+				console_print("\r\nT %d %d %d", ticks-old_ticks, send_seq, recv_seq);
+				cc_strobe(CC2500_SIDLE);
+				cc_strobe(CC2500_SFRX);
+				cc_strobe(CC2500_SRX);
 			}
 			else {
+				console_print("\r\nF %d", data[0]);
+				cc_strobe(CC2500_SIDLE);
 				cc_strobe(CC2500_SFRX);
 				cc_strobe(CC2500_SRX);
 			}
 			break;
+
 	}
+	old_ticks = ticks;
 }
 
 static void protocol_frsky_hack_send(uint8_t len __attribute__((unused))) {
-	cc_strobe(CC2500_SIDLE);
+	ticks = counter_status.ticks;
 	cc_set_mode(CC2500_TXRX_RX);
+	cc_strobe(CC2500_SIDLE);
 	cc_strobe(CC2500_SRX);
+
+	console_print("\r\nD %d %d %d", ticks-old_ticks, send_seq, recv_seq);
+	old_ticks = ticks;
 }
 
 /**
@@ -339,8 +387,10 @@ static void protocol_frsky_hack_next(void) {
 	frsky_hop_idx = (frsky_hop_idx + frsky_chanskip) % FRSKY_HOP_TABLE_LENGTH;
 	cc_strobe(CC2500_SIDLE);
 
-	cc_write_register(CC2500_CHANNR, frsky_hop_table[frsky_hop_idx]);
 	cc_write_register(CC2500_FSCAL1, frsky_fscal1[frsky_hop_idx]);
+	cc_write_register(CC2500_FSCAL2, frsky_fscal2);
+	cc_write_register(CC2500_FSCAL3, frsky_fscal3);
+	cc_write_register(CC2500_CHANNR, frsky_hop_table[frsky_hop_idx]);
 }
 
 /**
@@ -388,6 +438,8 @@ static bool protocol_frsky_parse_data(uint8_t *packet) {
 	frsky_hop_idx = packet[4] & 0x3F;
 	send_seq = packet[21] & 0x0F;
 	recv_seq = packet[21] >> 4;
+	unk_num = packet[3];
+	rx_num = packet[6];
 
 	return true;
 }
@@ -419,12 +471,13 @@ static bool protocol_frsky_parse_telem(uint8_t *packet) {
 	uint8_t chip_id = 1;
 	pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, FRSKY_TELEM_LENGTH+5, packet);
 
-	// Update information based on received telemetry
+	// Update the telemetry sequence based on the received data
 	if((packet[5] & 0xF) == 0x8 || (packet[5] >> 4) == 0x8) {
 		recv_seq = 0x8;
 		send_seq = 0x0;
-	} else{
-		recv_seq = ((packet[5] & 0x03) + 1) % 4; // Ignore all failed packets and sequence information
+	} else {
+		recv_seq = ((packet[5] & 0x03) + 1) % 4;
+		send_seq = (((packet[5] >> 4) & 0x3) + 3) % 4;
 	}
 
 	return true;
@@ -436,13 +489,15 @@ static bool protocol_frsky_parse_telem(uint8_t *packet) {
 static void protocol_frsky_build_packet(void) {
 //[32, 143, 125, 4, 102, 1, 1, 0, 0, 0, 1, 192, 255, 3, 192, 0, 12, 192, 0, 12, 192, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 241, 149, 11, 140, 28, 0]
 	static bool send_part2 = false;
+
+
 	frsky_packet[0] = frsky_packet_length-3;
 	frsky_packet[1] = frsky_target_id[0];
 	frsky_packet[2] = frsky_target_id[1];
-	frsky_packet[3] = 0x04;
-	frsky_packet[4] = (frsky_chanskip << 6) | frsky_hop_idx;
-	frsky_packet[5] = frsky_chanskip >> 2;
-	frsky_packet[6] = 1; // RX number
+	frsky_packet[3] = unk_num;
+	frsky_packet[4] = (44 << 6) | frsky_hop_idx;
+	frsky_packet[5] = 44 >> 2;
+	frsky_packet[6] = rx_num; // RX number
 	frsky_packet[7] = 0; // No failsafe values
 	frsky_packet[8] = 0;
 
@@ -454,11 +509,9 @@ static void protocol_frsky_build_packet(void) {
 		frsky_packet[i + 11]  = (value1 >> 4);
 	}
 
-	if(send_seq != 0x8){
+	// Update the sequence and transmit
+	if(send_seq != 0x8)
 		send_seq = (send_seq + 1) & 0x03;
-		recv_seq |= 0x04;
-	}
-
 	frsky_packet[21] = (recv_seq << 4) | send_seq; // Sequence
 
 	for(uint8_t i = 22; i < frsky_packet_length-4; i++)
@@ -473,7 +526,7 @@ static void protocol_frsky_build_packet(void) {
 	frsky_packet[frsky_packet_length-1] = 0x80;
 	frsky_packet[frsky_packet_length] = frsky_hop_table[frsky_hop_idx];
 	frsky_packet[frsky_packet_length+1] = 0;
-	send_part2 = !send_part2;
+	//send_part2 = !send_part2;
 	//uint8_t chip_id = 1;
 	//pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, frsky_packet_length+2, frsky_packet);
 }

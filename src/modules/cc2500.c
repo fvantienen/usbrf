@@ -37,6 +37,7 @@ cc_on_event _cc_send_callback = NULL;
 /* Internal functions and settings */
 static void cc_process(void);
 static uint8_t cc_tx_bytes = 0;
+static uint8_t cc_status = 0x0;
 
 /**
  * Initialize the CC2500
@@ -56,11 +57,7 @@ void cc_init(void) {
  * Poll the status registers to check if packet is end/received
  */
 void cc_run(void) {
-	static uint32_t start_ticks = 0;
-	if(start_ticks + counter_get_ticks_of_us(200) <= counter_get_ticks()) {
-		start_ticks = counter_get_ticks();
-		cc_process();
-	}
+	cc_process();
 }
 
 /**
@@ -80,15 +77,13 @@ static void cc_process(void) {
 	}
 
 	/* Handle TX callback */
-	if(cc_tx_bytes > 0) {
+	if(_cc_send_callback != NULL && cc_tx_bytes > 0) {
 		uint8_t txlen = cc_read_register(CC2500_TXBYTES) & 0x7F;
-		if(txlen == 0) {
+		if(txlen == 0 /*&& ((cc_status >> 4) & 0x7) == CC2500_STATE_IDLE*/) {
 			txlen = cc_read_register(CC2500_TXBYTES) & 0x7F;
 			if(txlen == 0) {
 				cc_tx_bytes = 0;
-
-				if(_cc_send_callback != NULL)
-					_cc_send_callback(0);
+				_cc_send_callback(0);
 			}
 		}
 	}
@@ -134,7 +129,7 @@ void cc_write_block(const uint8_t address, const uint8_t data[], const int lengt
 	int i;
 	cm_disable_interrupts();
 	CC_CS_LO();
-	spi_xfer(CC_DEV_SPI, CC2500_WRITE_BURST | address);
+	cc_status = spi_xfer(CC_DEV_SPI, CC2500_WRITE_BURST | address);
 
 	for (i = 0; i < length; i++)
 		spi_xfer(CC_DEV_SPI, data[i]);
@@ -152,7 +147,7 @@ uint8_t cc_read_register(const uint8_t address) {
 	uint8_t data;
 	cm_disable_interrupts();
 	CC_CS_LO();
-	spi_xfer(CC_DEV_SPI, CC2500_READ_SINGLE | address);
+	cc_status = spi_xfer(CC_DEV_SPI, CC2500_READ_SINGLE | address);
 	data = spi_xfer(CC_DEV_SPI, 0);
 	CC_CS_HI();
 	cm_enable_interrupts();
@@ -169,7 +164,7 @@ void cc_read_block(const uint8_t address, uint8_t data[], const int length) {
 	int i;
 	cm_disable_interrupts();
 	CC_CS_LO();
-	spi_xfer(CC_DEV_SPI, CC2500_READ_BURST | address);
+	cc_status = spi_xfer(CC_DEV_SPI, CC2500_READ_BURST | address);
 
 	for (i = 0; i < length; i++)
 		data[i] = spi_xfer(CC_DEV_SPI, 0);
@@ -207,7 +202,7 @@ void cc_get_mfg_id(uint8_t *mfg_id) {
 void cc_strobe(uint8_t cmd) {
 	cm_disable_interrupts();
 	CC_CS_LO();
-  spi_xfer(CC_DEV_SPI, cmd);
+  cc_status = spi_xfer(CC_DEV_SPI, cmd);
 	CC_CS_HI();
 	cm_enable_interrupts();
 }

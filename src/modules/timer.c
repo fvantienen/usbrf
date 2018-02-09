@@ -37,7 +37,7 @@ static void timer1_init(void) {
 
 	// Enable the timer NVIC
 	nvic_enable_irq(TIMER1_NVIC);
-	nvic_set_priority(TIMER1_NVIC, 0);
+	nvic_set_priority(TIMER1_NVIC, 1);
 
 	// Setup the timer
 	timer_disable_counter(TIMER1);
@@ -73,14 +73,14 @@ void timer_init(void) {
 
 /**
  * Set the timer1 to interrupt
- * @param[in] us The time in microseconds divided by 10
+ * @param[in] us The time in microseconds times 10
  */
 void timer1_set(uint16_t us) {
-	timer1_value = timer_get_counter(TIMER1);
-	uint16_t new_t = (us + timer_get_counter(TIMER1)) % 65535;
+	timer_set_counter(TIMER1, 0);
+	timer1_value = 0;
 
 	// Update the timer compare value 1
-	timer_set_oc_value(TIMER1, TIM_OC1, new_t);
+	timer_set_oc_value(TIMER1, TIM_OC1, us);
 
 	// Clear the interrupt flag and enable the interrupt of compare 1
 	timer_clear_flag(TIMER1, TIM_SR_CC1IF);
@@ -91,10 +91,7 @@ void timer1_set(uint16_t us) {
  * Get the time since last set timer1
  */
 uint16_t timer1_get_time(void) {
-	if(timer_get_counter(TIMER1) > timer1_value)
-		return timer_get_counter(TIMER1) - timer1_value;
-
-	return timer_get_counter(TIMER1)+65535 - timer1_value;
+	return timer_get_counter(TIMER1);
 }
 
 /**

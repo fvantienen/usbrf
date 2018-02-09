@@ -68,7 +68,7 @@ void counter_init(void)
    */
   systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
   systick_set_reload((rcc_ahb_frequency / 8) / COUNTER_FREQ - 1);
-  nvic_set_priority(NVIC_SYSTICK_IRQ, 2);
+  nvic_set_priority(NVIC_SYSTICK_IRQ, 0);
   systick_interrupt_enable();
   systick_counter_enable();
 

@@ -65,13 +65,19 @@ int main(void) {
 	pprzlink_register_cb(PPRZ_MSG_ID_REQ_INFO, msg_req_info_cb);
 
 	/* The main loop */
+	uint32_t start_ticks = 0;
 	while (1) {
-		cyrf_run();
-		cc_run();
-		cdcacm_run();
-		pprzlink_run();
-		console_run();
-		protocol_run();
+		if(start_ticks + 10 <= counter_get_ticks()) {
+			start_ticks = counter_get_ticks();
+			cyrf_run();
+			cc_run();
+			protocol_run();
+		}
+		else if(start_ticks + 8 >= counter_get_ticks()) {
+			cdcacm_run();
+			pprzlink_run();
+			console_run();
+		}
 	}
 
 	return 0;
