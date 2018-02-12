@@ -204,7 +204,7 @@ static void protocol_cyrf_scanner_timer(void) {
 }
 
 static void protocol_cyrf_scanner_receive(bool error) {
-	uint8_t packet_length, packet[21], rx_status, i, rx_err;
+	uint8_t packet_length, packet[21], rx_status, rx_err;
 
 	// Get the receive count, rx_status and the packet
 	packet_length = cyrf_read_register(CYRF_RX_COUNT);
@@ -227,10 +227,10 @@ static void protocol_cyrf_scanner_receive(bool error) {
 		cyrf_set_mode(CYRF_MODE_SYNTH_RX, true);
 		cyrf_write_register(CYRF_RX_ABORT, 0x00);
 
-		console_print("\r\nScanning at index %d", cyrf_scan_idx);
+		/*console_print("\r\nScanning at index %d", cyrf_scan_idx);
 		console_print("\r\nGot packet (status: %02X, error: %d) [%d]: ", rx_status, error, packet_length);
-		for(i = 0; i < packet_length+2; i++)
-			console_print("%02X", packet[i]);;
+		for(uint8_t i = 0; i < packet_length+2; i++)
+			console_print("%02X", packet[i]);*/
 
 		uint8_t chip_id = 0;
 		pprz_msg_send_RECV_DATA(&pprzlink.tp.trans_tx, &pprzlink.dev, 1, &chip_id, packet_length+5, packet);

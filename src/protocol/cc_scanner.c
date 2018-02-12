@@ -194,11 +194,11 @@ static void protocol_cc_scanner_timer(void) {
 
 static void protocol_cc_scanner_receive(uint8_t len) {
 	static uint8_t packet_len = 0;
-	static uint32_t ticks = 0;
+	//static uint32_t ticks = 0;
 
 	/* Check if we receieved a packet length */
 	if(packet_len == 0) {
-		ticks = counter_status.ticks;
+		//ticks = counter_status.ticks;
 		cc_read_data(&packet_len, 1);
 		len--;
 	}

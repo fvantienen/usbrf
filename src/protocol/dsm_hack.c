@@ -332,7 +332,7 @@ static void protocol_dsm_hack_receive(bool error) {
 				if(succ_packets > 15) {
 					cyrf_start_transmit();
 					protocol_dsm_build_packet();
-					console_print("\r\nS %d %d", time_chana, time_chanb);
+					//console_print("\r\nS %d %d", time_chana, time_chanb);
 
 					if(dsm_hack_status == DSM_HACK_RECV_A) {
 						dsm_hack_status = DSM_HACK_SEND_B;
