@@ -226,25 +226,18 @@ class FrSkyX(Protocol):
 		#if msg[0] == 14:
 		#	print(msg)
 		if msg[0] != self.packet_len:
-			print('1')
-			print(msg)
 			return None
 
 		# Check if the CC2500 CRC is correct
 		if (msg[self.packet_len+2] & 0x80) != 0x80:
-			print('2')
-			print(msg)
 			return None
 
 		# Check the inner CRC
 		calc_crc = self.crc(msg[3:self.packet_len-1])
 		packet_crc = (msg[self.packet_len-1] << 8) | msg[self.packet_len]
 		if calc_crc != packet_crc:
-			print('3')
-			print(msg)
 			return None
 
-		#print(msg)
 		idx = msg[4] & 0x3F
 		chan = msg[-2]
 		recv_seq = msg[21] >> 4

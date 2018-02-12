@@ -48,6 +48,7 @@ class Device(GObject.GObject):
 		msg = PprzMessage('usbrf', 'REQ_INFO')
 		msg['version'] = Ground.VERSION * 1000
 		self.smi.send(msg, 0)
+		time.sleep(1)
 
 	def stop(self):
 		"""Stop the connection to the device"""

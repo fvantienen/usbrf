@@ -90,10 +90,9 @@ class Scanner():
 			for dev in devices:
 				if tx.rfchip.__class__ in dev.get_chips():
 					tx.start_hacking(dev)
-					#devices.remove(dev)
+					devices.remove(dev)
 					done = True
-					#TODO: REMOVE MEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-					#break
+					break
 
 			if not done:
 				print('Could not start hacking on ' + tx.get_id_str() + ', not enough devices!')
@@ -139,6 +138,7 @@ class ScannerManagerBox(Gtk.Box):
 	def __init__(self, scanner):
 		self.scanner = scanner
 		self.pause = False
+		self.rcnt_min = 0
 
 		# Create the GUI
 		Gtk.Box.__init__(self)
@@ -159,15 +159,15 @@ class ScannerManagerBox(Gtk.Box):
 
 		self.scan_but = Gtk.Button(label='Scan')
 		self.scan_but.connect("clicked", self.on_scan)
-		self.grid.attach(self.scan_but, 9, 1, 1, 1)
+		self.grid.attach(self.scan_but, 11, 1, 1, 1)
 
 		self.hack_but = Gtk.Button(label='Hack')
 		self.hack_but.connect("clicked", self.on_hack)
-		self.grid.attach(self.hack_but, 10, 1, 1, 1)
+		self.grid.attach(self.hack_but, 12, 1, 1, 1)
 
 		self.stop_but = Gtk.Button(label='Stop')
 		self.stop_but.connect("clicked", self.on_stop)
-		self.grid.attach(self.stop_but, 11, 1, 1, 1)
+		self.grid.attach(self.stop_but, 13, 1, 1, 1)
 
 		# Create the sub GUI's
 		self.create_gui_transmitters()
@@ -192,10 +192,18 @@ class ScannerManagerBox(Gtk.Box):
 		self.pause_but.connect("toggled", self.on_pause)
 		self.grid.attach(self.pause_but, 3, 0, 1, 1)
 
+		# Add the RCNT filter
+		self.rcnt_spinb = Gtk.SpinButton()
+		self.rcnt_spinb.set_adjustment(Gtk.Adjustment(0, 0, 500, 1, 5, 0))
+		self.rcnt_spinb.connect("value-changed", self.on_rcnt_change)
+		self.grid.attach(self.rcnt_spinb, 4, 0, 1, 1)
+
 		# Create the treeview and liststore
 		self.tx_liststore = Gtk.ListStore(transmitter.Transmitter, str, str, str, int, int, bool, int, int, int, int)
-		self.tx_treeview = Gtk.TreeView(model=self.tx_liststore)
-		self.grid.attach(self.tx_treeview, 0, 1, 8, 20)
+		self.rcnt_filter = self.tx_liststore.filter_new()
+		self.rcnt_filter.set_visible_func(self.filter_rcnt)
+		self.tx_treeview = Gtk.TreeView(model=self.rcnt_filter)
+		self.grid.attach(self.tx_treeview, 0, 1, 10, 20)
 
 		# Add the protocol name column
 		cell = Gtk.CellRendererText()
@@ -262,7 +270,7 @@ class ScannerManagerBox(Gtk.Box):
 		# Add a treeview containing all protocols
 		self.prot_liststore = Gtk.ListStore(str, str, int)
 		self.prot_treeview = Gtk.TreeView(model=self.prot_liststore)
-		self.grid.attach(self.prot_treeview, 8, 2, 4, 1)
+		self.grid.attach(self.prot_treeview, 10, 2, 4, 1)
 
 		# Add the first Name column
 		column = Gtk.TreeViewColumn("Name", Gtk.CellRendererText(), text=0)
@@ -286,6 +294,15 @@ class ScannerManagerBox(Gtk.Box):
 		column = Gtk.TreeViewColumn("Time(s)", Gtk.CellRendererText(), text=2)
 		self.prot_treeview.append_column(column)
 
+	def filter_rcnt(self, model, iter, data):
+		"""Filter based on the receive count"""
+		rcnt = self.tx_liststore[iter][self.TxFields.recv_cnt]
+		return rcnt >= self.rcnt_min
+
+	def on_rcnt_change(self, widget):
+		"""When the RCNT filter has changed value"""
+		self.rcnt_min = widget.get_value_as_int()
+		self.rcnt_filter.refilter()
 
 	def on_txm_change(self):
 		"""Whenever a TX is changed or added in the list"""
